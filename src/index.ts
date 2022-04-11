@@ -64,20 +64,21 @@ import('@dimforge/rapier3d').then(RAPIER => {
         translation: { x: number, y: number, z: number },
         rotation: { x: number, y: number, z: number, w: number },
         color: string): { rigid: RigidBody, mesh: THREE.Mesh } {
-    
+
         let bodyDesc
-        
+
         if (bodyType === 'dynamic') {
             bodyDesc = RAPIER.RigidBodyDesc.dynamic();
         } else if (bodyType === 'kinematicPositionBased') {
             bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased();
         }
         bodyDesc.setTranslation(translation.x, translation.y, translation.z)
-            .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
-            
-    
+            .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w })
+            .setCanSleep(false);
+
+
         let rigidBody = world.createRigidBody(bodyDesc);
-    
+
         let dynamicCollider;
         if (colliderType === 'cube') {
             dynamicCollider = RAPIER.ColliderDesc.cuboid(dimension.hx, dimension.hy, dimension.hz);
@@ -85,19 +86,19 @@ import('@dimforge/rapier3d').then(RAPIER => {
             dynamicCollider = RAPIER.ColliderDesc.ball(dimension.radius);
         }
         world.createCollider(dynamicCollider, rigidBody.handle);
-    
+
         let bufferGeometry;
         if (colliderType === 'cube') {
             bufferGeometry = new BoxBufferGeometry(dimension.hx * 2, dimension.hy * 2, dimension.hz * 2);
         } else if (colliderType === 'sphere') {
             bufferGeometry = new THREE.SphereBufferGeometry(dimension.radius, 32, 32);
         }
-    
+
         const threeMesh = new THREE.Mesh(bufferGeometry, new MeshPhongMaterial({ color: color }));
         threeMesh.castShadow = true;
         threeMesh.receiveShadow = true;
         scene.add(threeMesh);
-    
+
         return { rigid: rigidBody, mesh: threeMesh };
     }
 
@@ -144,7 +145,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
     let i, j;
     for (i = 0; i <= nsubdivs; ++i) {
         for (j = 0; j <= nsubdivs; ++j) {
-            console.log(`${i} - ${j}`)
             heights.push(columsRows.get(j).get(i));
         }
     }
@@ -156,8 +156,8 @@ import('@dimforge/rapier3d').then(RAPIER => {
     world.createCollider(groundCollider, groundBody.handle);
 
 
-    const cubeBody = body(scene, world, 'dynamic', 'cube', 
-        { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 7, z: 0 }, 
+    const cubeBody = body(scene, world, 'dynamic', 'cube',
+        { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 7, z: 0 },
         { x: 0, y: 0.4, z: 0.7, w: 1.0 }, 'orange');
     bodys.push(cubeBody);
 
@@ -171,9 +171,13 @@ import('@dimforge/rapier3d').then(RAPIER => {
         { x: 0, y: 1, z: 0, w: 0 }, 'red');
     bodys.push(kinematicSphere);
 
+    const clock = new THREE.Clock();
     // Game loop. Replace by your own game loop system.
     let gameLoop = () => {
-        // Ste the simulation forward.  
+        let deltaTime = clock.getDelta();
+        move(kinematicSphere.rigid, deltaTime);
+
+        // Step the simulation forward.  
         world.step();
 
         // update 3d world with physical world
@@ -207,10 +211,80 @@ import('@dimforge/rapier3d').then(RAPIER => {
 })
 
 
-const keysPressed: any = {  }
+const keysPressed: any = {}
 document.addEventListener('keydown', (event) => {
     keysPressed[event.key.toLowerCase()] = true
 }, false);
 document.addEventListener('keyup', (event) => {
     keysPressed[event.key.toLowerCase()] = false
 }, false);
+
+
+const rotateYAxis = new THREE.Vector3(0, 1, 0);
+const walkDirection  = new THREE.Vector3();
+const rotateWalkDirection = new THREE.Quaternion();
+const MOVEMENT_SPEED_PER_SECOND = 2;
+function move(rigid: RigidBody, delta: number) {
+    const w = keysPressed['w'];
+    const a = keysPressed['a'];
+    const s = keysPressed['s'];
+    const d = keysPressed['d'];
+    const q = keysPressed['q'];
+    const e = keysPressed['e'];
+
+    if (w || a || s || d || q || e) {
+        walkDirection.x = 0;
+        walkDirection.y = 0;
+        walkDirection.z = 0;
+
+        if (w || a || s || d) {
+            const offset = directionOffset(w,a,s,d);
+            camera.getWorldDirection(walkDirection );
+            walkDirection.y = 0;
+            rotateWalkDirection.setFromAxisAngle(rotateYAxis, offset);
+            walkDirection.applyQuaternion(rotateWalkDirection);
+        }
+
+        if (q) {
+            walkDirection.y = 1
+        } else if(e) {
+            walkDirection.y = -1
+        }
+
+        walkDirection.normalize();
+        walkDirection.multiplyScalar(MOVEMENT_SPEED_PER_SECOND * delta);
+
+        const translation = rigid.translation();
+        translation.x += walkDirection.x;
+        translation.y += walkDirection.y;
+        translation.z += walkDirection.z;
+
+        rigid.setTranslation(translation , true);
+    }
+}
+
+function directionOffset(w: boolean, a: boolean, s: boolean, d: boolean): number {
+    var directionOffset = 0 // w
+
+    if (w) {
+        if (a) {
+            directionOffset = Math.PI / 4 // w+a
+        } else if (d) {
+            directionOffset = - Math.PI / 4 // w+d
+        }
+    } else if (s) {
+        if (a) {
+            directionOffset = Math.PI / 4 + Math.PI / 2 // s+a
+        } else if (d) {
+            directionOffset = -Math.PI / 4 - Math.PI / 2 // s+d
+        } else {
+            directionOffset = Math.PI // s
+        }
+    } else if (a) {
+        directionOffset = Math.PI / 2 // a
+    } else if (d) {
+        directionOffset = - Math.PI / 2 // d
+    }
+
+    return directionOffset
+}
