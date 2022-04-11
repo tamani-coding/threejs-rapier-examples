@@ -59,30 +59,37 @@ window.addEventListener('resize', onWindowResize);
 import('@dimforge/rapier3d').then(RAPIER => {
 
     function body(scene: THREE.Scene, world: World,
-        type: 'cube' | 'sphere', dimension: any,
+        bodyType: 'dynamic' | 'kinematicPositionBased',
+        colliderType: 'cube' | 'sphere', dimension: any,
         translation: { x: number, y: number, z: number },
         rotation: { x: number, y: number, z: number, w: number },
         color: string): { rigid: RigidBody, mesh: THREE.Mesh } {
     
-        let dynamic = RAPIER.RigidBodyDesc
-            .dynamic()
-            .setTranslation(translation.x, translation.y, translation.z)
+        let bodyDesc
+        
+        if (bodyType === 'dynamic') {
+            bodyDesc = RAPIER.RigidBodyDesc.dynamic();
+        } else if (bodyType === 'kinematicPositionBased') {
+            bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased();
+        }
+        bodyDesc.setTranslation(translation.x, translation.y, translation.z)
             .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
+            
     
-        let dynamicBody = world.createRigidBody(dynamic);
+        let rigidBody = world.createRigidBody(bodyDesc);
     
         let dynamicCollider;
-        if (type === 'cube') {
+        if (colliderType === 'cube') {
             dynamicCollider = RAPIER.ColliderDesc.cuboid(dimension.hx, dimension.hy, dimension.hz);
-        } else if (type === 'sphere') {
+        } else if (colliderType === 'sphere') {
             dynamicCollider = RAPIER.ColliderDesc.ball(dimension.radius);
         }
-        world.createCollider(dynamicCollider, dynamicBody.handle);
+        world.createCollider(dynamicCollider, rigidBody.handle);
     
         let bufferGeometry;
-        if (type === 'cube') {
+        if (colliderType === 'cube') {
             bufferGeometry = new BoxBufferGeometry(dimension.hx * 2, dimension.hy * 2, dimension.hz * 2);
-        } else if (type === 'sphere') {
+        } else if (colliderType === 'sphere') {
             bufferGeometry = new THREE.SphereBufferGeometry(dimension.radius, 32, 32);
         }
     
@@ -91,7 +98,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
         threeMesh.receiveShadow = true;
         scene.add(threeMesh);
     
-        return { rigid: dynamicBody, mesh: threeMesh };
+        return { rigid: rigidBody, mesh: threeMesh };
     }
 
     // Use the RAPIER module here.
@@ -150,48 +157,20 @@ import('@dimforge/rapier3d').then(RAPIER => {
     world.createCollider(groundCollider, groundBody.handle);
 
 
-    // Create a dynamic rigid-body.
-    const cube = {
-        dimension: {
-            hx: 0.5,
-            hy: 0.5,
-            hz: 0.5
-        },
-        translation: {
-            x: 0,
-            y: 5,
-            z: 0
-        },
-        rotation: {
-            x: 0,
-            y: 0.4,
-            z: 0.7,
-            w: 1.0
-        }
-    }
-    const cubeBody = body(scene, world, 'cube', cube.dimension, cube.translation, cube.rotation, 'orange');
+    const cubeBody = body(scene, world, 'dynamic', 'cube', 
+        { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 5, z: 0 }, 
+        { x: 0, y: 0.4, z: 0.7, w: 1.0 }, 'orange');
     bodys.push(cubeBody);
 
-    // kinematic body
-    const ball = {
-        dimension: {
-            radius: 0.5
-        },
-        translation: {
-            x: 4,
-            y: 5,
-            z: 2
-        },
-        rotation: {
-            x: 0,
-            y: 1,
-            z: 0,
-            w: 0
-        }
-    }
-    const sphereBody = body(scene, world, 'sphere', ball.dimension, ball.translation,
-        ball.rotation, 'blue');
+    const sphereBody = body(scene, world, 'dynamic', 'sphere',
+        { radius: 0.5 }, { x: 4, y: 5, z: 2 },
+        { x: 0, y: 1, z: 0, w: 0 }, 'blue');
     bodys.push(sphereBody);
+
+    const kinematicSphere = body(scene, world, 'kinematicPositionBased', 'sphere',
+        { radius: 0.7 }, { x: 0, y: 2, z: 0 },
+        { x: 0, y: 1, z: 0, w: 0 }, 'red');
+    bodys.push(kinematicSphere);
 
     // Game loop. Replace by your own game loop system.
     let gameLoop = () => {
@@ -227,3 +206,12 @@ import('@dimforge/rapier3d').then(RAPIER => {
         // sphereBody.rigid.applyImpulse({ x: 0, y: 2, z: -0.4 }, true);
     })
 })
+
+
+const keysPressed: any = {  }
+document.addEventListener('keydown', (event) => {
+    keysPressed[event.key.toLowerCase()] = true
+}, false);
+document.addEventListener('keyup', (event) => {
+    keysPressed[event.key.toLowerCase()] = false
+}, false);
