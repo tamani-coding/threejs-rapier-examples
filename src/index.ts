@@ -62,7 +62,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
     // Create Ground.
     let nsubdivs = 20;
-    let scale = new RAPIER.Vector3(70.0, 3.0, 70.0);
+    let scale = new RAPIER.Vector3(10.0, 3.0, 70.0);
     let heights: number[] = []
     
     const threeFloor = new THREE.Mesh(
@@ -88,10 +88,10 @@ import('@dimforge/rapier3d').then(RAPIER => {
         // j + 2 because it is the z component that we modify
         (vertices as any)[ i + 2 ] = scale.y * rng;
 
-        if (!columsRows.get(x)) {
-            columsRows.set(x, new Map());
+        if (!columsRows.get(y)) {
+            columsRows.set(y, new Map());
         }
-        columsRows.get(x).set(y, rng);
+        columsRows.get(y).set(x, rng);
     }
     console.log(columsRows)
     let i, j;
@@ -170,6 +170,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
     window.addEventListener('click', event => {
         console.log('click')
-        rigidBody.applyImpulse({ x: 0, y: 3, z: -1 }, true);
+        rigidBody.applyImpulse({ x: 0, y: 3, z: 1 }, true);
     })
 })
