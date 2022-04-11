@@ -231,14 +231,12 @@ function move(world: World, ray: Ray, rigid: RigidBody, delta: number) {
     const a = keysPressed['a'];
     const s = keysPressed['s'];
     const d = keysPressed['d'];
-    const q = keysPressed['q'];
-    const e = keysPressed['e'];
 
     walkDirection.x = 0;
     walkDirection.y = 0;
     walkDirection.z = 0;
 
-    if (w || a || s || d || q || e) {
+    if (w || a || s || d) {
         if (w || a || s || d) {
             const offset = directionOffset(w,a,s,d);
             camera.getWorldDirection(walkDirection );
@@ -246,13 +244,6 @@ function move(world: World, ray: Ray, rigid: RigidBody, delta: number) {
             rotateWalkDirection.setFromAxisAngle(rotateYAxis, offset);
             walkDirection.applyQuaternion(rotateWalkDirection);
         }
-
-        if (q) {
-            walkDirection.y = 1
-        } else if(e) {
-            walkDirection.y = -1
-        }
-
     }
     
     const translation = rigid.translation();
@@ -265,7 +256,7 @@ function move(world: World, ray: Ray, rigid: RigidBody, delta: number) {
     ray.origin.z = translation.z
     let hit = world.castRay(ray, 0.6, false, 0xfffffffff);
     if (!hit) {
-        walkDirection.y += -2 * delta
+        walkDirection.y += -9.81 * delta
     } else {
         const point = ray.pointAt(hit.toi);
         const up = ray.origin.y - point.y - 0.5;
