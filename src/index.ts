@@ -62,7 +62,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
     // Create Ground.
     let nsubdivs = 20;
-    let scale = new RAPIER.Vector3(10.0, 3.0, 70.0);
+    let scale = new RAPIER.Vector3(70.0, 3.0, 70.0);
     let heights: number[] = []
     
     const threeFloor = new THREE.Mesh(
@@ -79,9 +79,9 @@ import('@dimforge/rapier3d').then(RAPIER => {
     const columsRows = new Map();
     for ( let i = 0; i < vertices.length; i += 3 ) {
 
-        let x = (vertices as any)[ i ] + (scale.x / 2);
+        let x = Math.abs( (vertices as any)[ i ] + (scale.x / 2) );
         x = Math.floor(x / dx);
-        let y = (vertices as any)[ i + 1] + (scale.z / 2);
+        let y = Math.abs( (vertices as any)[ i + 1] - (scale.z / 2) );
         y = Math.floor(y / dy);
         const rng = Math.random();
         // console.log(`${heights[ Math.floor((x/dx)) * nsubdivs +  Math.floor((y/dy))]}`);
