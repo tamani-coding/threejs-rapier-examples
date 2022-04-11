@@ -160,11 +160,25 @@ import('@dimforge/rapier3d').then(RAPIER => {
         },
         rotation: {
             x: 0,
-            y: 0.4,
-            z: 0.7,
-            w: 1.0
+            y: 0,
+            z: 0,
+            w: 0
         }
     }
+    const kinematic = RAPIER.RigidBodyDesc.dynamic()        
+            .setTranslation(ball.translation.x, ball.translation.y, ball.translation.z)
+            .setRotation({ x: ball.rotation.x, y: ball.rotation.y, z: ball.rotation.z, w: ball.rotation.w });
+    const kinematicBody = world.createRigidBody(kinematic);
+    const kinematicCollider = RAPIER.ColliderDesc.ball(ball.dimension.radius);
+    world.createCollider(kinematicCollider, kinematicBody.handle);
+    const threeSphere = new THREE.Mesh(
+        new THREE.SphereBufferGeometry(ball.dimension.radius, 32, 32),
+        new THREE.MeshPhongMaterial( { color: 'blue' } )
+    );
+    threeSphere.castShadow = true
+    threeSphere.receiveShadow = true
+    scene.add(threeSphere);
+    bodys.push( { rigid: kinematicBody, mesh: threeSphere } );
 
     // Game loop. Replace by your own game loop system.
     let gameLoop = () => {
@@ -179,7 +193,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
             body.mesh.position.y = position.y
             body.mesh.position.z = position.z
             body.mesh.setRotationFromQuaternion(
-                new THREE.Quaternion(dynamicBody.rotation().x,
+                new THREE.Quaternion(rotation.x,
                     rotation.y,
                     rotation.z,
                     rotation.w));
