@@ -1,226 +1,219 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-
-import('@dimforge/rapier3d').then(RAPIER => {
-
-  createFloor();
-  createBox();
-  createSphere();
-  createCylinder();
-
-  animate();
-})
-
-// CAMERA
-const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 1500);
-camera.position.set(-35, 70, 100);
-camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-// RENDERER
-const renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-document.body.appendChild(renderer.domElement);
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { initGUI } from './utils/gui';
+import { BoxBufferGeometry, MeshPhongMaterial } from 'three';
 
 // SCENE
-const scene: THREE.Scene = new THREE.Scene();
-scene.background = new THREE.Color(0xbfd1e5);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xa8def0);
 
-// CONTROLS 
+// CAMERA
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.y = 3;
+camera.position.z = 5;
+camera.position.x = -3;
 
-const controls = new OrbitControls(camera, renderer.domElement);
+// RENDERER
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true
 
-export function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+// ORBIT CAMERA CONTROLS
+const orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.enableDamping = true
+orbitControls.minDistance = 10
+orbitControls.maxDistance = 30
+// orbitControls.maxPolarAngle = Math.PI / 2 - 0.05 // prevent camera below ground
+// orbitControls.minPolarAngle = Math.PI / 4        // prevent top down view
+orbitControls.update();
+
+const dLight = new THREE.DirectionalLight();
+dLight.position.x = 3;
+dLight.position.y = 10;
+dLight.castShadow = true;
+scene.add(dLight);
+
+// ANIMATE
+document.body.appendChild(renderer.domElement);
+
+// RESIZE HANDLER
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener('resize', onWindowResize);
 
-var clock: THREE.Clock = new THREE.Clock();
 
-export function animate() {
+function generateHeight(width: number, depth: number, minHeight: number, maxHeight: number) {
 
-  let deltaTime = clock.getDelta();
-  // updatePhysics(deltaTime);
-  // dragObject();
-  // resetBodys();
+    // Generates the height data (a sinus wave)
 
-  renderer.render(scene, camera)
-  requestAnimationFrame(animate)
-}
+    const size = width * depth;
+    const data = new Float32Array(size);
 
-let hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.1)
-hemiLight.color.setHSL(0.6, 0.6, 0.6);
-hemiLight.groundColor.setHSL(0.1, 1, 0.4);
-hemiLight.position.set(0, 50, 0);
-scene.add(hemiLight)
+    const hRange = maxHeight - minHeight;
+    const w2 = width / 2;
+    const d2 = depth / 2;
+    const phaseMult = 12;
 
-let dirLight = new THREE.DirectionalLight(0xffffff, 1);
-dirLight.color.setHSL(0.1, 1, 0.95);
-dirLight.position.set(-1, 1.75, 1);
-dirLight.position.multiplyScalar(100);
-scene.add(dirLight);
+    let p = 0;
 
-dirLight.castShadow = true;
-dirLight.shadow.mapSize.width = 2048;
-dirLight.shadow.mapSize.height = 2048;
-let d = 50;
-dirLight.shadow.camera.left = -d;
-dirLight.shadow.camera.right = d;
-dirLight.shadow.camera.top = d;
-dirLight.shadow.camera.bottom = -d;
-dirLight.shadow.camera.far = 13500;
+    for (let j = 0; j < depth; j++) {
 
-function createFloor() {
-  let pos = { x: 0, y: -1, z: 0 };
-  let scale = { x: 100, y: 2, z: 100 };
-  let quat = { x: 0, y: 0, z: 0, w: 1 };
-  let mass = 0;
+        for (let i = 0; i < width; i++) {
 
-  let blockPlane = new THREE.Mesh(new THREE.BoxBufferGeometry(), new THREE.MeshPhongMaterial({ color: 0xf9c834 }));
-  blockPlane.position.set(pos.x, pos.y, pos.z);
-  blockPlane.scale.set(scale.x, scale.y, scale.z);
-  blockPlane.castShadow = true;
-  blockPlane.receiveShadow = true;
-  scene.add(blockPlane)
-}
+            const radius = Math.sqrt(
+                Math.pow((i - w2) / w2, 2.0) +
+                Math.pow((j - d2) / d2, 2.0));
 
-function createBox() {
-  let pos = { x: -10, y: 6, z: 0 }
-  let scale = { x: 6, y: 6, z: 6 }
+            const height = (Math.sin(radius * phaseMult) + 1) * 0.5 * hRange + minHeight;
 
-  let box = new THREE.Mesh(new THREE.BoxBufferGeometry(), new THREE.MeshPhongMaterial({ color: 0xDC143C }));
-  box.position.set(pos.x, pos.y, pos.z);
-  box.scale.set(scale.x, scale.y, scale.z);
-  box.castShadow = true;
-  box.receiveShadow = true;
-  scene.add(box);
-}
+            data[p] = height;
 
-function createSphere() {
-  let pos = { x: 10, y: 6, z: 0 };
-  let radius = 4;
+            p++;
 
-  let sphere = new THREE.Mesh(new THREE.SphereBufferGeometry(radius, 32, 32), new THREE.MeshPhongMaterial({ color: 0x43a1f4 }))
-  sphere.position.set(pos.x, pos.y, pos.z)
-  sphere.castShadow = true
-  sphere.receiveShadow = true
-  scene.add(sphere)
-}
+        }
 
-function createCylinder() {
-  let pos = { x: -25, y: 6, z: 0 };
-  let radius = 4;
-  let height = 6
-  let quat = { x: 0, y: 0, z: 0, w: 1 };
-  let mass = 1;
-
-  let cylinder = new THREE.Mesh(new THREE.CylinderBufferGeometry(radius, radius, height, 32), new THREE.MeshPhongMaterial({ color: 0x90ee90 }))
-  cylinder.position.set(pos.x, pos.y, pos.z)
-  cylinder.castShadow = true
-  cylinder.receiveShadow = true
-  scene.add(cylinder)
-
-}
-
-
-// function updatePhysics(deltaTime: number) {
-
-//   // Step world
-//   physicsWorld.stepSimulation(deltaTime, 10);
-
-//     // Update rigid bodies
-//     for (let i = 0; i < rigidBodies.length; i++) {
-//       let objThree = rigidBodies[i];
-//       let objAmmo = objThree.userData.physicsBody as Ammo.btRigidBody;
-//       let ms = objAmmo.getMotionState() as Ammo.btDefaultMotionState;
-//       if (ms) {
-//         ms.getWorldTransform(tmpTrans);
-//         let p = tmpTrans.getOrigin();
-//         let q = tmpTrans.getRotation();
-//         objThree.position.set(p.x(), p.y(), p.z());
-//         objThree.quaternion.set(q.x(), q.y(), q.z(), q.w());
-//       }
-//     }
-// }
-
-// function dragObject () {
-//   if (draggable != null) {
-//     let physicsBody = draggable.userData.physicsBody as Ammo.btRigidBody;
-//     let currentPosition = draggable.position;
-
-//     const found = intersect(moveMouse);
-
-//     if (found.length > 0) {
-//       for (let i = 0; i < found.length; i++) {
-//         if (found[i].object.userData.draggable)
-//           continue
-        
-//         let target = found[i].point;
-//         target.y = 10;
-//         target = target.sub(currentPosition);
-  
-//         resultantImpulse.setX(target.x)
-//         resultantImpulse.setY(target.y)
-//         resultantImpulse.setZ(target.z)
-//         physicsBody.setLinearVelocity(resultantImpulse);
-
-//         break;
-//       }
-//     }
-//   }
-// }
-
-// function resetBodys () {
-//   for (let i = 0; i < rigidBodies.length; i++) {
-//     let objThree = rigidBodies[i];
-//     let objAmmo = objThree.userData.physicsBody as Ammo.btRigidBody;
-
-//     if (objThree.position.y < -10) {
-//       // RESET OBJECT
-//       objThree.position.set(0, 4, 0);
-//       let transform = new Ammo.btTransform();
-//       transform.setIdentity();
-//       transform.setOrigin(new Ammo.btVector3(0, 4, 0));
-//       transform.setRotation(new Ammo.btQuaternion(0, 0, 0, 1));
-//       objAmmo.setWorldTransform(transform);
-//       objAmmo.setLinearVelocity(new Ammo.btVector3(0, 0, 0));
-//     }
-//   }
-// }
-
-const raycaster = new THREE.Raycaster(); // create once
-const clickMouse = new THREE.Vector2(); // create once
-const moveMouse = new THREE.Vector2(); // create once
-var draggable: THREE.Object3D;
-
-function intersect(pos: THREE.Vector2) {
-  // update the picking ray with the camera and mouse position
-  raycaster.setFromCamera(pos, camera);
-
-  return raycaster.intersectObjects(scene.children);
-}
-
-window.addEventListener('click', event => {
-  if (draggable != null) {
-    draggable = null as any
-    return;
-  }
-
-  // THREE RAYCASTER
-  clickMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  clickMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-  const found = intersect(clickMouse);
-  if (found.length > 0) {
-    if (found[0].object.userData.draggable && found[0].object.userData.draggable == true) {
-      draggable = found[0].object
     }
-  }
-});
 
-window.addEventListener('mousemove', event => {
-  moveMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  moveMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-});
+    return data;
+
+}
+const terrainWidthExtents = 50;
+const terrainDepthExtents = 50;
+const terrainWidth = 128;
+const terrainDepth = 128;
+const terrainHalfWidth = terrainWidth / 2;
+const terrainHalfDepth = terrainDepth / 2;
+const terrainMaxHeight = 1;
+const terrainMinHeight = -1;
+const heightData = generateHeight(terrainWidth, terrainDepth, terrainMinHeight, terrainMaxHeight);
+const heights: number[] = [];
+
+const geometry = new THREE.PlaneGeometry(terrainWidthExtents, terrainDepthExtents, terrainWidth - 1, terrainDepth - 1);
+geometry.rotateX(- Math.PI / 2);
+const vertices = geometry.attributes.position.array;
+for (let i = 0, j = 0, l = vertices.length; i < l; i++, j += 3) {
+    // j + 1 because it is the y component that we modify
+    (vertices as any)[j + 1] = heightData[i];
+    heights.push(heightData[i])
+}
+geometry.computeVertexNormals();
+const groundMaterial = new THREE.MeshPhongMaterial({ color: 0xC7C7C7 });
+const terrainMesh = new THREE.Mesh(geometry, groundMaterial);
+terrainMesh.receiveShadow = true;
+terrainMesh.castShadow = true;
+scene.add(terrainMesh);
+
+
+import('@dimforge/rapier3d').then(RAPIER => {
+    // Use the RAPIER module here.
+    let gravity = { x: 0.0, y: -9.81, z: 0.0 };
+    let world = new RAPIER.World(gravity);
+
+    // Create the ground
+    const floor = {
+        dimension: {
+            hx: 10,
+            hy: 0.1,
+            hz: 10
+        },
+        translation: {
+            x: 0,
+            y: -1,
+            z: 0
+        }
+    }
+    let groundColliderDesc = RAPIER.ColliderDesc
+        .cuboid(floor.dimension.hx, floor.dimension.hy, floor.dimension.hz)
+        .setTranslation(floor.translation.x, floor.translation.y, floor.translation.z);
+    world.createCollider(groundColliderDesc);
+    const threeGround = new THREE.Mesh(
+        new BoxBufferGeometry(floor.dimension.hx * 2, floor.dimension.hy * 2, floor.dimension.hz * 2),
+        new MeshPhongMaterial({ color: 'green' }));
+    threeGround.position.x = floor.translation.x;
+    threeGround.position.y = floor.translation.y;
+    threeGround.position.z = floor.translation.z;
+    threeGround.receiveShadow = true;
+    scene.add(threeGround);
+
+
+    let bodyDesc = RAPIER.RigidBodyDesc.fixed();
+    bodyDesc.translation.x = 0;
+    bodyDesc.translation.y = -6;
+    bodyDesc.translation.z = 0;
+    let body = world.createRigidBody(bodyDesc);
+    //height field
+    // const heightField = RAPIER
+    //     .ColliderDesc
+    //     .heightfield(terrainWidth,
+    //         terrainDepth,
+    //         new Float32Array(heights),
+    //         { x: terrainWidthExtents, y: terrainDepthExtents, z: terrainMaxHeight - terrainMinHeight })
+    // world.createCollider(heightField, body.handle);
+
+    // Create a dynamic rigid-body.
+    const cube = {
+        dimension: {
+            hx: 0.5,
+            hy: 0.5,
+            hz: 0.5
+        },
+        translation: {
+            x: 0,
+            y: 2,
+            z: 0
+        },
+        rotation: {
+            x: 0,
+            y: 0.4,
+            z: 0.7,
+            w: 1.0
+        }
+    }
+    let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(cube.translation.x, cube.translation.y, cube.translation.z)
+        .setRotation({ x: cube.rotation.x, y: cube.rotation.y, z: cube.rotation.z, w: cube.rotation.w });
+    let rigidBody = world.createRigidBody(rigidBodyDesc);
+    // Create a cuboid collider attached to the dynamic rigidBody.
+    let colliderDesc = RAPIER.ColliderDesc.cuboid(cube.dimension.hx, cube.dimension.hy, cube.dimension.hz);
+    let collider = world.createCollider(colliderDesc, rigidBody.handle);
+    const threeBox = new THREE.Mesh(
+        new BoxBufferGeometry(cube.dimension.hx * 2, cube.dimension.hy * 2, cube.dimension.hz * 2),
+        new MeshPhongMaterial({ color: 'orange' })
+    );
+    threeBox.castShadow = true
+    scene.add(threeBox);
+
+    // Game loop. Replace by your own game loop system.
+    let gameLoop = () => {
+        // Ste the simulation forward.  
+        world.step();
+
+        // Get and print the rigid-body's position.
+        let position = rigidBody.translation();
+        let rotation = rigidBody.rotation();
+        threeBox.position.x = position.x
+        threeBox.position.y = position.y
+        threeBox.position.z = position.z
+        threeBox.setRotationFromQuaternion(
+            new THREE.Quaternion(rigidBody.rotation().x,
+                rotation.y,
+                rotation.z,
+                rotation.w));
+
+        orbitControls.update()
+        renderer.render(scene, camera);
+
+        setTimeout(gameLoop, 16);
+    };
+
+    gameLoop();
+
+    window.addEventListener('click', event => {
+        console.log('click')
+        rigidBody.applyImpulse({ x: 0.01, y: 3, z: -0.08 }, true);
+    })
+})

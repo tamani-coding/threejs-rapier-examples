@@ -2,13 +2,9 @@
     "compilerOptions": {
       "outDir": "./dist/",
       "sourceMap": true,
-      "noImplicitAny": false,
+      "noImplicitAny": true,
       "module": "CommonJS",
       "target": "es5",
-      "allowJs": true,
-      "skipLibCheck": true,
-    },
-    "exclude": [
-      "node_modules"
-    ]
+      "allowJs": true
+    }
 }

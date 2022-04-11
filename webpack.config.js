@@ -1,6 +1,6 @@
 const path = require('path');
-const CopyPlugin = require("copy-webpack-plugin");
-const webpack = require('webpack');
+
+const src = path.resolve(__dirname, 'src');
 
 module.exports = {
   mode: 'development',
@@ -11,28 +11,21 @@ module.exports = {
       {
         test: /\.tsx?$/,
         use: 'ts-loader',
-        exclude: /node_modules/,
-      },
-    ],
+        exclude: /node_modules/
+      }
+    ]
   },
   resolve: {
-    extensions: ['.js'],
+    extensions: ['.tsx', '.ts', '.js']
   },
   output: {
-    filename: 'bundle.js',
-    path: path.resolve(__dirname, 'dist'),
+    filename: 'index.js',
+    path: src
   },
-  plugins: [
-    new CopyPlugin({
-      patterns: [
-        {
-          from: path.resolve(__dirname, "static")
-        }
-      ]
-    }),
-    new webpack.IgnorePlugin(/(fs)/)
-  ],
+  devServer: {
+    static: src,
+  },
   experiments: {
     asyncWebAssembly: true,
-  }
-};
+  },
+}
