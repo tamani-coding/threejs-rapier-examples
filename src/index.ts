@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { initGUI } from './utils/gui';
 import { BoxBufferGeometry, MeshPhongMaterial } from 'three';
-import { RigidBody } from '@dimforge/rapier3d';
+import { RigidBody, World } from '@dimforge/rapier3d';
 
 // SCENE
 const scene = new THREE.Scene();
@@ -57,6 +57,43 @@ function onWindowResize() {
 window.addEventListener('resize', onWindowResize);
 
 import('@dimforge/rapier3d').then(RAPIER => {
+
+    function body(scene: THREE.Scene, world: World,
+        type: 'cube' | 'sphere', dimension: any,
+        translation: { x: number, y: number, z: number },
+        rotation: { x: number, y: number, z: number, w: number },
+        color: string): { rigid: RigidBody, mesh: THREE.Mesh } {
+    
+        let dynamic = RAPIER.RigidBodyDesc
+            .dynamic()
+            .setTranslation(translation.x, translation.y, translation.z)
+            .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
+    
+        let dynamicBody = world.createRigidBody(dynamic);
+    
+        let dynamicCollider;
+        if (type === 'cube') {
+            dynamicCollider = RAPIER.ColliderDesc.cuboid(dimension.hx, dimension.hy, dimension.hz);
+        } else if (type === 'sphere') {
+            dynamicCollider = RAPIER.ColliderDesc.ball(dimension.radius);
+        }
+        world.createCollider(dynamicCollider, dynamicBody.handle);
+    
+        let bufferGeometry;
+        if (type === 'cube') {
+            bufferGeometry = new BoxBufferGeometry(dimension.hx * 2, dimension.hy * 2, dimension.hz * 2);
+        } else if (type === 'sphere') {
+            bufferGeometry = new THREE.SphereBufferGeometry(dimension.radius, 32, 32);
+        }
+    
+        const threeMesh = new THREE.Mesh(bufferGeometry, new MeshPhongMaterial({ color: color }));
+        threeMesh.castShadow = true;
+        threeMesh.receiveShadow = true;
+        scene.add(threeMesh);
+    
+        return { rigid: dynamicBody, mesh: threeMesh };
+    }
+
     // Use the RAPIER module here.
     let gravity = { x: 0.0, y: -9.81, z: 0.0 };
     let world = new RAPIER.World(gravity);
@@ -68,11 +105,11 @@ import('@dimforge/rapier3d').then(RAPIER => {
     let nsubdivs = 20;
     let scale = new RAPIER.Vector3(70.0, 3.0, 70.0);
     let heights: number[] = []
-    
+
     const threeFloor = new THREE.Mesh(
         new THREE.PlaneBufferGeometry(scale.x, scale.z, nsubdivs, nsubdivs),
-        new THREE.MeshPhongMaterial( {color: 'green'} ));
-    threeFloor.rotateX( - Math.PI / 2 );
+        new THREE.MeshPhongMaterial({ color: 'green' }));
+    threeFloor.rotateX(- Math.PI / 2);
     threeFloor.receiveShadow = true;
     threeFloor.castShadow = true;
     scene.add(threeFloor);
@@ -81,16 +118,16 @@ import('@dimforge/rapier3d').then(RAPIER => {
     const dx = scale.x / nsubdivs;
     const dy = scale.z / nsubdivs;
     const columsRows = new Map();
-    for ( let i = 0; i < vertices.length; i += 3 ) {
+    for (let i = 0; i < vertices.length; i += 3) {
 
-        let x = Math.abs( (vertices as any)[ i ] + (scale.x / 2) );
+        let x = Math.abs((vertices as any)[i] + (scale.x / 2));
         x = Math.floor(x / dx);
-        let y = Math.abs( (vertices as any)[ i + 1] - (scale.z / 2) );
+        let y = Math.abs((vertices as any)[i + 1] - (scale.z / 2));
         y = Math.floor(y / dy);
         const rng = Math.random();
         // console.log(`${heights[ Math.floor((x/dx)) * nsubdivs +  Math.floor((y/dy))]}`);
         // j + 2 because it is the z component that we modify
-        (vertices as any)[ i + 2 ] = scale.y * rng;
+        (vertices as any)[i + 2] = scale.y * rng;
 
         if (!columsRows.get(y)) {
             columsRows.set(y, new Map());
@@ -102,7 +139,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     for (i = 0; i <= nsubdivs; ++i) {
         for (j = 0; j <= nsubdivs; ++j) {
             console.log(`${i} - ${j}`)
-            heights.push( columsRows.get(j).get(i) );
+            heights.push(columsRows.get(j).get(i));
         }
     }
     threeFloor.geometry.computeVertexNormals();
@@ -132,26 +169,13 @@ import('@dimforge/rapier3d').then(RAPIER => {
             w: 1.0
         }
     }
-    let dynamic = RAPIER.RigidBodyDesc.dynamic()
-        .setTranslation(cube.translation.x, cube.translation.y, cube.translation.z)
-        .setRotation({ x: cube.rotation.x, y: cube.rotation.y, z: cube.rotation.z, w: cube.rotation.w });
-    let dynamicBody = world.createRigidBody(dynamic);
-    // Create a cuboid collider attached to the dynamic rigidBody.
-    let dynamicCollider = RAPIER.ColliderDesc.cuboid(cube.dimension.hx, cube.dimension.hy, cube.dimension.hz);
-    world.createCollider(dynamicCollider, dynamicBody.handle);
-    const threeBox = new THREE.Mesh(
-        new BoxBufferGeometry(cube.dimension.hx * 2, cube.dimension.hy * 2, cube.dimension.hz * 2),
-        new MeshPhongMaterial({ color: 'orange' })
-    );
-    threeBox.castShadow = true;
-    threeBox.receiveShadow = true;
-    scene.add(threeBox);
-    bodys.push( {rigid: dynamicBody, mesh: threeBox} );
+    const cubeBody = body(scene, world, 'cube', cube.dimension, cube.translation, cube.rotation, 'orange');
+    bodys.push(cubeBody);
 
     // kinematic body
     const ball = {
         dimension: {
-            radius: 1.0
+            radius: 0.5
         },
         translation: {
             x: 4,
@@ -160,25 +184,14 @@ import('@dimforge/rapier3d').then(RAPIER => {
         },
         rotation: {
             x: 0,
-            y: 0,
+            y: 1,
             z: 0,
             w: 0
         }
     }
-    const kinematic = RAPIER.RigidBodyDesc.dynamic()        
-            .setTranslation(ball.translation.x, ball.translation.y, ball.translation.z)
-            .setRotation({ x: ball.rotation.x, y: ball.rotation.y, z: ball.rotation.z, w: ball.rotation.w });
-    const kinematicBody = world.createRigidBody(kinematic);
-    const kinematicCollider = RAPIER.ColliderDesc.ball(ball.dimension.radius);
-    world.createCollider(kinematicCollider, kinematicBody.handle);
-    const threeSphere = new THREE.Mesh(
-        new THREE.SphereBufferGeometry(ball.dimension.radius, 32, 32),
-        new THREE.MeshPhongMaterial( { color: 'blue' } )
-    );
-    threeSphere.castShadow = true
-    threeSphere.receiveShadow = true
-    scene.add(threeSphere);
-    bodys.push( { rigid: kinematicBody, mesh: threeSphere } );
+    const sphereBody = body(scene, world, 'sphere', ball.dimension, ball.translation,
+        ball.rotation, 'blue');
+    bodys.push(sphereBody);
 
     // Game loop. Replace by your own game loop system.
     let gameLoop = () => {
@@ -186,12 +199,14 @@ import('@dimforge/rapier3d').then(RAPIER => {
         world.step();
 
         // update 3d world with physical world
-        bodys.forEach( body => {
+        bodys.forEach(body => {
             let position = body.rigid.translation();
             let rotation = body.rigid.rotation();
+
             body.mesh.position.x = position.x
             body.mesh.position.y = position.y
             body.mesh.position.z = position.z
+
             body.mesh.setRotationFromQuaternion(
                 new THREE.Quaternion(rotation.x,
                     rotation.y,
@@ -208,7 +223,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     gameLoop();
 
     window.addEventListener('click', event => {
-        console.log('click')
-        dynamicBody.applyImpulse({ x: 0, y: 3, z: 1 }, true);
+        // cubeBody.rigid.applyImpulse({ x: 0, y: 3, z: 1 }, true);
+        // sphereBody.rigid.applyImpulse({ x: 0, y: 2, z: -0.4 }, true);
     })
 })
