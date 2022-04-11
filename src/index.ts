@@ -81,32 +81,6 @@ function generateHeight(width: number, depth: number, minHeight: number, maxHeig
     return data;
 
 }
-const terrainWidthExtents = 50;
-const terrainDepthExtents = 50;
-const terrainWidth = 128;
-const terrainDepth = 128;
-const terrainHalfWidth = terrainWidth / 2;
-const terrainHalfDepth = terrainDepth / 2;
-const terrainMaxHeight = 1;
-const terrainMinHeight = -1;
-const heightData = generateHeight(terrainWidth, terrainDepth, terrainMinHeight, terrainMaxHeight);
-const heights: number[] = [];
-
-const geometry = new THREE.PlaneGeometry(terrainWidthExtents, terrainDepthExtents, terrainWidth - 1, terrainDepth - 1);
-geometry.rotateX(- Math.PI / 2);
-const vertices = geometry.attributes.position.array;
-for (let i = 0, j = 0, l = vertices.length; i < l; i++, j += 3) {
-    // j + 1 because it is the y component that we modify
-    (vertices as any)[j + 1] = heightData[i];
-    heights.push(heightData[i])
-}
-geometry.computeVertexNormals();
-const groundMaterial = new THREE.MeshPhongMaterial({ color: 0xC7C7C7 });
-const terrainMesh = new THREE.Mesh(geometry, groundMaterial);
-terrainMesh.receiveShadow = true;
-terrainMesh.castShadow = true;
-scene.add(terrainMesh);
-
 
 import('@dimforge/rapier3d').then(RAPIER => {
     // Use the RAPIER module here.
@@ -138,21 +112,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
     threeGround.position.z = floor.translation.z;
     threeGround.receiveShadow = true;
     scene.add(threeGround);
-
-
-    let bodyDesc = RAPIER.RigidBodyDesc.fixed();
-    bodyDesc.translation.x = 0;
-    bodyDesc.translation.y = -6;
-    bodyDesc.translation.z = 0;
-    let body = world.createRigidBody(bodyDesc);
-    //height field
-    // const heightField = RAPIER
-    //     .ColliderDesc
-    //     .heightfield(terrainWidth,
-    //         terrainDepth,
-    //         new Float32Array(heights),
-    //         { x: terrainWidthExtents, y: terrainDepthExtents, z: terrainMaxHeight - terrainMinHeight })
-    // world.createCollider(heightField, body.handle);
 
     // Create a dynamic rigid-body.
     const cube = {
