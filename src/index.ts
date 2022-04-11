@@ -103,10 +103,10 @@ import('@dimforge/rapier3d').then(RAPIER => {
     }
     threeFloor.geometry.computeVertexNormals();
 
-    let bodyDesc = RAPIER.RigidBodyDesc.fixed();
-    let body = world.createRigidBody(bodyDesc);
-    let groundColliderDesc = RAPIER.ColliderDesc.heightfield(nsubdivs, nsubdivs, new Float32Array(heights), scale);
-    world.createCollider(groundColliderDesc, body.handle);
+    let groundBodyDesc = RAPIER.RigidBodyDesc.fixed();
+    let groundBody = world.createRigidBody(groundBodyDesc);
+    let groundCollider = RAPIER.ColliderDesc.heightfield(nsubdivs, nsubdivs, new Float32Array(heights), scale);
+    world.createCollider(groundCollider, groundBody.handle);
 
 
     // Create a dynamic rigid-body.
@@ -128,13 +128,13 @@ import('@dimforge/rapier3d').then(RAPIER => {
             w: 1.0
         }
     }
-    let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+    let dynamic = RAPIER.RigidBodyDesc.dynamic()
         .setTranslation(cube.translation.x, cube.translation.y, cube.translation.z)
         .setRotation({ x: cube.rotation.x, y: cube.rotation.y, z: cube.rotation.z, w: cube.rotation.w });
-    let rigidBody = world.createRigidBody(rigidBodyDesc);
+    let dynamicBody = world.createRigidBody(dynamic);
     // Create a cuboid collider attached to the dynamic rigidBody.
-    let colliderDesc = RAPIER.ColliderDesc.cuboid(cube.dimension.hx, cube.dimension.hy, cube.dimension.hz);
-    let collider = world.createCollider(colliderDesc, rigidBody.handle);
+    let dynamicCollider = RAPIER.ColliderDesc.cuboid(cube.dimension.hx, cube.dimension.hy, cube.dimension.hz);
+    world.createCollider(dynamicCollider, dynamicBody.handle);
     const threeBox = new THREE.Mesh(
         new BoxBufferGeometry(cube.dimension.hx * 2, cube.dimension.hy * 2, cube.dimension.hz * 2),
         new MeshPhongMaterial({ color: 'orange' })
@@ -149,13 +149,13 @@ import('@dimforge/rapier3d').then(RAPIER => {
         world.step();
 
         // Get and print the rigid-body's position.
-        let position = rigidBody.translation();
-        let rotation = rigidBody.rotation();
+        let position = dynamicBody.translation();
+        let rotation = dynamicBody.rotation();
         threeBox.position.x = position.x
         threeBox.position.y = position.y
         threeBox.position.z = position.z
         threeBox.setRotationFromQuaternion(
-            new THREE.Quaternion(rigidBody.rotation().x,
+            new THREE.Quaternion(dynamicBody.rotation().x,
                 rotation.y,
                 rotation.z,
                 rotation.w));
@@ -170,6 +170,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
     window.addEventListener('click', event => {
         console.log('click')
-        rigidBody.applyImpulse({ x: 0, y: 3, z: 1 }, true);
+        dynamicBody.applyImpulse({ x: 0, y: 3, z: 1 }, true);
     })
 })
