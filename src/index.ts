@@ -225,7 +225,7 @@ document.addEventListener('keyup', (event) => {
 const rotateYAxis = new THREE.Vector3(0, 1, 0);
 const walkDirection  = new THREE.Vector3();
 const rotateWalkDirection = new THREE.Quaternion();
-const MOVEMENT_SPEED_PER_SECOND = 2;
+const MOVEMENT_SPEED_PER_SECOND = 4;
 function move(world: World, ray: Ray, rigid: RigidBody, delta: number) {
     const w = keysPressed['w'];
     const a = keysPressed['a'];
