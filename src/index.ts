@@ -9,9 +9,9 @@ scene.background = new THREE.Color(0xa8def0);
 
 // CAMERA
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.y = 3;
-camera.position.z = 5;
-camera.position.x = -3;
+camera.position.y = 5;
+camera.position.z = 10;
+camera.position.x = -13;
 
 // RENDERER
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -29,10 +29,19 @@ orbitControls.maxDistance = 30
 orbitControls.update();
 
 const dLight = new THREE.DirectionalLight();
-dLight.position.x = 3;
-dLight.position.y = 10;
+dLight.position.x = 10;
+dLight.position.y = 30;
 dLight.castShadow = true;
+dLight.shadow.mapSize.width = 4096;
+dLight.shadow.mapSize.height = 4096;
+const d = 25;
+dLight.shadow.camera.left = - d;
+dLight.shadow.camera.right = d;
+dLight.shadow.camera.top = d;
+dLight.shadow.camera.bottom = - d;
 scene.add(dLight);
+const helper = new THREE.CameraHelper(dLight.shadow.camera);
+scene.add(helper);
 
 // ANIMATE
 document.body.appendChild(renderer.domElement);
@@ -45,41 +54,17 @@ function onWindowResize() {
 }
 window.addEventListener('resize', onWindowResize);
 
+function generateHeightfield(nsubdivs: number) {
+    let heights = [];
 
-function generateHeight(width: number, depth: number, minHeight: number, maxHeight: number) {
-
-    // Generates the height data (a sinus wave)
-
-    const size = width * depth;
-    const data = new Float32Array(size);
-
-    const hRange = maxHeight - minHeight;
-    const w2 = width / 2;
-    const d2 = depth / 2;
-    const phaseMult = 12;
-
-    let p = 0;
-
-    for (let j = 0; j < depth; j++) {
-
-        for (let i = 0; i < width; i++) {
-
-            const radius = Math.sqrt(
-                Math.pow((i - w2) / w2, 2.0) +
-                Math.pow((j - d2) / d2, 2.0));
-
-            const height = (Math.sin(radius * phaseMult) + 1) * 0.5 * hRange + minHeight;
-
-            data[p] = height;
-
-            p++;
-
+    let i, j;
+    for (i = 0; i <= nsubdivs; ++i) {
+        for (j = 0; j <= nsubdivs; ++j) {
+            heights.push(Math.random());
         }
-
     }
 
-    return data;
-
+    return heights;
 }
 
 import('@dimforge/rapier3d').then(RAPIER => {
@@ -87,31 +72,21 @@ import('@dimforge/rapier3d').then(RAPIER => {
     let gravity = { x: 0.0, y: -9.81, z: 0.0 };
     let world = new RAPIER.World(gravity);
 
-    // Create the ground
-    const floor = {
-        dimension: {
-            hx: 10,
-            hy: 0.1,
-            hz: 10
-        },
-        translation: {
-            x: 0,
-            y: -1,
-            z: 0
-        }
-    }
-    let groundColliderDesc = RAPIER.ColliderDesc
-        .cuboid(floor.dimension.hx, floor.dimension.hy, floor.dimension.hz)
-        .setTranslation(floor.translation.x, floor.translation.y, floor.translation.z);
-    world.createCollider(groundColliderDesc);
-    const threeGround = new THREE.Mesh(
-        new BoxBufferGeometry(floor.dimension.hx * 2, floor.dimension.hy * 2, floor.dimension.hz * 2),
-        new MeshPhongMaterial({ color: 'green' }));
-    threeGround.position.x = floor.translation.x;
-    threeGround.position.y = floor.translation.y;
-    threeGround.position.z = floor.translation.z;
-    threeGround.receiveShadow = true;
-    scene.add(threeGround);
+    // Create Ground.
+    let nsubdivs = 20;
+    let scale = new RAPIER.Vector3(70.0, 2.0, 70.0);
+    let bodyDesc = RAPIER.RigidBodyDesc.fixed();
+    let body = world.createRigidBody(bodyDesc);
+    let heights = generateHeightfield(nsubdivs)
+    let groundColliderDesc = RAPIER.ColliderDesc.heightfield(nsubdivs, nsubdivs, new Float32Array(heights), scale);
+    world.createCollider(groundColliderDesc, body.handle);
+    const threeFloor = new THREE.Mesh(
+        new THREE.PlaneBufferGeometry(scale.x, scale.z, nsubdivs, nsubdivs),
+        new THREE.MeshPhongMaterial( {color: 'green'} ));
+    threeFloor.rotateX( - Math.PI / 2 );
+    threeFloor.receiveShadow = true;
+    scene.add(threeFloor);
+
 
     // Create a dynamic rigid-body.
     const cube = {
@@ -122,7 +97,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
         },
         translation: {
             x: 0,
-            y: 2,
+            y: 5,
             z: 0
         },
         rotation: {
