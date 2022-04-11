@@ -237,13 +237,11 @@ function move(world: World, ray: Ray, rigid: RigidBody, delta: number) {
     walkDirection.z = 0;
 
     if (w || a || s || d) {
-        if (w || a || s || d) {
-            const offset = directionOffset(w,a,s,d);
-            camera.getWorldDirection(walkDirection );
-            walkDirection.y = 0;
-            rotateWalkDirection.setFromAxisAngle(rotateYAxis, offset);
-            walkDirection.applyQuaternion(rotateWalkDirection);
-        }
+        const offset = directionOffset(w,a,s,d);
+        camera.getWorldDirection(walkDirection );
+        walkDirection.y = 0;
+        rotateWalkDirection.setFromAxisAngle(rotateYAxis, offset);
+        walkDirection.applyQuaternion(rotateWalkDirection);
     }
     
     const translation = rigid.translation();
