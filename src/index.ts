@@ -1,4 +1,4 @@
-import { RigidBody, World } from '@dimforge/rapier3d';
+import { Ray, RigidBody, World } from '@dimforge/rapier3d';
 import * as THREE from 'three';
 import { BoxBufferGeometry, MeshPhongMaterial } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -86,13 +86,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
         }
         world.createCollider(dynamicCollider, rigidBody.handle);
 
-        if (bodyType === 'kinematicPositionBased') {
-            dynamicCollider
-                .setActiveCollisionTypes(
-                    RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.KINEMATIC_STATIC
-                );
-        }
-
         let bufferGeometry;
         if (colliderType === 'cube') {
             bufferGeometry = new BoxBufferGeometry(dimension.hx * 2, dimension.hy * 2, dimension.hz * 2);
@@ -159,11 +152,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     let groundBodyDesc = RAPIER.RigidBodyDesc.fixed();
     let groundBody = world.createRigidBody(groundBodyDesc);
     let groundCollider = RAPIER.ColliderDesc.heightfield(nsubdivs, nsubdivs, new Float32Array(heights), scale);
-    groundCollider.setActiveCollisionTypes(
-        RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.KINEMATIC_STATIC
-        );
     world.createCollider(groundCollider, groundBody.handle);
-
 
     const cubeBody = body(scene, world, 'dynamic', 'cube',
         { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 7, z: 0 },
@@ -180,11 +169,16 @@ import('@dimforge/rapier3d').then(RAPIER => {
         { x: 0, y: 1, z: 0, w: 0 }, 'red');
     bodys.push(kinematicSphere);
 
+    const ray = new RAPIER.Ray( 
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: -1, z: 0} 
+    );
+
     const clock = new THREE.Clock();
     // Game loop. Replace by your own game loop system.
     let gameLoop = () => {
         let deltaTime = clock.getDelta();
-        move(kinematicSphere.rigid, deltaTime);
+        move(world, ray, kinematicSphere.rigid, deltaTime);
 
         // Step the simulation forward.  
         world.step();
@@ -232,7 +226,7 @@ const rotateYAxis = new THREE.Vector3(0, 1, 0);
 const walkDirection  = new THREE.Vector3();
 const rotateWalkDirection = new THREE.Quaternion();
 const MOVEMENT_SPEED_PER_SECOND = 2;
-function move(rigid: RigidBody, delta: number) {
+function move(world: World, ray: Ray, rigid: RigidBody, delta: number) {
     const w = keysPressed['w'];
     const a = keysPressed['a'];
     const s = keysPressed['s'];
@@ -240,11 +234,11 @@ function move(rigid: RigidBody, delta: number) {
     const q = keysPressed['q'];
     const e = keysPressed['e'];
 
-    if (w || a || s || d || q || e) {
-        walkDirection.x = 0;
-        walkDirection.y = 0;
-        walkDirection.z = 0;
+    walkDirection.x = 0;
+    walkDirection.y = 0;
+    walkDirection.z = 0;
 
+    if (w || a || s || d || q || e) {
         if (w || a || s || d) {
             const offset = directionOffset(w,a,s,d);
             camera.getWorldDirection(walkDirection );
@@ -259,16 +253,32 @@ function move(rigid: RigidBody, delta: number) {
             walkDirection.y = -1
         }
 
-        walkDirection.normalize();
-        walkDirection.multiplyScalar(MOVEMENT_SPEED_PER_SECOND * delta);
-
-        const translation = rigid.translation();
-        rigid.setNextKinematicTranslation( { 
-            x: translation.x + walkDirection.x, 
-            y: translation.y + walkDirection.y, 
-            z: translation.z + walkDirection.z 
-        });
     }
+    
+    const translation = rigid.translation();
+
+    walkDirection.normalize();
+    walkDirection.multiplyScalar(MOVEMENT_SPEED_PER_SECOND * delta);
+
+    ray.origin.x = translation.x
+    ray.origin.y = translation.y
+    ray.origin.z = translation.z
+    let hit = world.castRay(ray, 0.6, false, 0xfffffffff);
+    if (!hit) {
+        walkDirection.y += -2 * delta
+    } else {
+        const point = ray.pointAt(hit.toi);
+        const up = ray.origin.y - point.y - 0.5;
+        if (up > 0.2 || up < 0) {
+            walkDirection.y += Math.abs(up)
+        }
+    }
+
+    rigid.setNextKinematicTranslation( { 
+        x: translation.x + walkDirection.x, 
+        y: translation.y + walkDirection.y, 
+        z: translation.z + walkDirection.z 
+    });
 }
 
 function directionOffset(w: boolean, a: boolean, s: boolean, d: boolean): number {
