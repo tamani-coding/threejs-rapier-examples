@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { initGUI } from './utils/gui';
 import { BoxBufferGeometry, MeshPhongMaterial } from 'three';
+import { RigidBody } from '@dimforge/rapier3d';
 
 // SCENE
 const scene = new THREE.Scene();
@@ -59,6 +60,9 @@ import('@dimforge/rapier3d').then(RAPIER => {
     // Use the RAPIER module here.
     let gravity = { x: 0.0, y: -9.81, z: 0.0 };
     let world = new RAPIER.World(gravity);
+
+    // Bodys
+    const bodys: { rigid: RigidBody, mesh: THREE.Mesh }[] = []
 
     // Create Ground.
     let nsubdivs = 20;
@@ -142,23 +146,44 @@ import('@dimforge/rapier3d').then(RAPIER => {
     threeBox.castShadow = true;
     threeBox.receiveShadow = true;
     scene.add(threeBox);
+    bodys.push( {rigid: dynamicBody, mesh: threeBox} );
+
+    // kinematic body
+    const ball = {
+        dimension: {
+            radius: 1.0
+        },
+        translation: {
+            x: 4,
+            y: 5,
+            z: 2
+        },
+        rotation: {
+            x: 0,
+            y: 0.4,
+            z: 0.7,
+            w: 1.0
+        }
+    }
 
     // Game loop. Replace by your own game loop system.
     let gameLoop = () => {
         // Ste the simulation forward.  
         world.step();
 
-        // Get and print the rigid-body's position.
-        let position = dynamicBody.translation();
-        let rotation = dynamicBody.rotation();
-        threeBox.position.x = position.x
-        threeBox.position.y = position.y
-        threeBox.position.z = position.z
-        threeBox.setRotationFromQuaternion(
-            new THREE.Quaternion(dynamicBody.rotation().x,
-                rotation.y,
-                rotation.z,
-                rotation.w));
+        // update 3d world with physical world
+        bodys.forEach( body => {
+            let position = body.rigid.translation();
+            let rotation = body.rigid.rotation();
+            body.mesh.position.x = position.x
+            body.mesh.position.y = position.y
+            body.mesh.position.z = position.z
+            body.mesh.setRotationFromQuaternion(
+                new THREE.Quaternion(dynamicBody.rotation().x,
+                    rotation.y,
+                    rotation.z,
+                    rotation.w));
+        });
 
         orbitControls.update()
         renderer.render(scene, camera);
