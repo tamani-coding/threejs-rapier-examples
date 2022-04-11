@@ -1,8 +1,7 @@
-import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { initGUI } from './utils/gui';
-import { BoxBufferGeometry, MeshPhongMaterial } from 'three';
 import { RigidBody, World } from '@dimforge/rapier3d';
+import * as THREE from 'three';
+import { BoxBufferGeometry, MeshPhongMaterial } from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 // SCENE
 const scene = new THREE.Scene();
@@ -189,7 +188,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
         // Step the simulation forward.  
         world.step();
-
         // update 3d world with physical world
         bodys.forEach(body => {
             let position = body.rigid.translation();
