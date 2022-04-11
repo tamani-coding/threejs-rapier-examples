@@ -141,7 +141,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
         }
         columsRows.get(y).set(x, rng);
     }
-    console.log(columsRows)
     let i, j;
     for (i = 0; i <= nsubdivs; ++i) {
         for (j = 0; j <= nsubdivs; ++j) {
@@ -158,7 +157,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
 
     const cubeBody = body(scene, world, 'dynamic', 'cube', 
-        { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 5, z: 0 }, 
+        { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 7, z: 0 }, 
         { x: 0, y: 0.4, z: 0.7, w: 1.0 }, 'orange');
     bodys.push(cubeBody);
 
@@ -168,7 +167,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     bodys.push(sphereBody);
 
     const kinematicSphere = body(scene, world, 'kinematicPositionBased', 'sphere',
-        { radius: 0.7 }, { x: 0, y: 2, z: 0 },
+        { radius: 0.7 }, { x: 0, y: 4, z: 0 },
         { x: 0, y: 1, z: 0, w: 0 }, 'red');
     bodys.push(kinematicSphere);
 
