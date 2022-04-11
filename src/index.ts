@@ -87,6 +87,13 @@ import('@dimforge/rapier3d').then(RAPIER => {
         }
         world.createCollider(dynamicCollider, rigidBody.handle);
 
+        if (bodyType === 'kinematicPositionBased') {
+            dynamicCollider
+                .setActiveCollisionTypes(
+                    RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.KINEMATIC_STATIC
+                );
+        }
+
         let bufferGeometry;
         if (colliderType === 'cube') {
             bufferGeometry = new BoxBufferGeometry(dimension.hx * 2, dimension.hy * 2, dimension.hz * 2);
@@ -153,6 +160,9 @@ import('@dimforge/rapier3d').then(RAPIER => {
     let groundBodyDesc = RAPIER.RigidBodyDesc.fixed();
     let groundBody = world.createRigidBody(groundBodyDesc);
     let groundCollider = RAPIER.ColliderDesc.heightfield(nsubdivs, nsubdivs, new Float32Array(heights), scale);
+    groundCollider.setActiveCollisionTypes(
+        RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.KINEMATIC_STATIC
+        );
     world.createCollider(groundCollider, groundBody.handle);
 
 
@@ -255,11 +265,11 @@ function move(rigid: RigidBody, delta: number) {
         walkDirection.multiplyScalar(MOVEMENT_SPEED_PER_SECOND * delta);
 
         const translation = rigid.translation();
-        translation.x += walkDirection.x;
-        translation.y += walkDirection.y;
-        translation.z += walkDirection.z;
-
-        rigid.setTranslation(translation , true);
+        rigid.setNextKinematicTranslation( { 
+            x: translation.x + walkDirection.x, 
+            y: translation.y + walkDirection.y, 
+            z: translation.z + walkDirection.z 
+        });
     }
 }
 
