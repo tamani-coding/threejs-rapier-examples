@@ -22,6 +22,7 @@ renderer.shadowMap.enabled = true
 // ORBIT CAMERA CONTROLS
 const orbitControls = new OrbitControls(camera, renderer.domElement);
 orbitControls.enableDamping = true
+orbitControls.enablePan = true
 orbitControls.minDistance = 10
 orbitControls.maxDistance = 30
 // orbitControls.maxPolarAngle = Math.PI / 2 - 0.05 // prevent camera below ground
@@ -34,7 +35,7 @@ dLight.position.y = 30;
 dLight.castShadow = true;
 dLight.shadow.mapSize.width = 4096;
 dLight.shadow.mapSize.height = 4096;
-const d = 25;
+const d = 35;
 dLight.shadow.camera.left = - d;
 dLight.shadow.camera.right = d;
 dLight.shadow.camera.top = d;
@@ -54,19 +55,6 @@ function onWindowResize() {
 }
 window.addEventListener('resize', onWindowResize);
 
-function generateHeightfield(nsubdivs: number) {
-    let heights = [];
-
-    let i, j;
-    for (i = 0; i <= nsubdivs; ++i) {
-        for (j = 0; j <= nsubdivs; ++j) {
-            heights.push(Math.random());
-        }
-    }
-
-    return heights;
-}
-
 import('@dimforge/rapier3d').then(RAPIER => {
     // Use the RAPIER module here.
     let gravity = { x: 0.0, y: -9.81, z: 0.0 };
@@ -74,18 +62,51 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
     // Create Ground.
     let nsubdivs = 20;
-    let scale = new RAPIER.Vector3(70.0, 2.0, 70.0);
-    let bodyDesc = RAPIER.RigidBodyDesc.fixed();
-    let body = world.createRigidBody(bodyDesc);
-    let heights = generateHeightfield(nsubdivs)
-    let groundColliderDesc = RAPIER.ColliderDesc.heightfield(nsubdivs, nsubdivs, new Float32Array(heights), scale);
-    world.createCollider(groundColliderDesc, body.handle);
+    let scale = new RAPIER.Vector3(70.0, 3.0, 70.0);
+    let heights: number[] = []
+    
     const threeFloor = new THREE.Mesh(
         new THREE.PlaneBufferGeometry(scale.x, scale.z, nsubdivs, nsubdivs),
         new THREE.MeshPhongMaterial( {color: 'green'} ));
     threeFloor.rotateX( - Math.PI / 2 );
     threeFloor.receiveShadow = true;
+    threeFloor.castShadow = true;
     scene.add(threeFloor);
+
+    const vertices = threeFloor.geometry.attributes.position.array;
+    const dx = scale.x / nsubdivs;
+    const dy = scale.z / nsubdivs;
+    const columsRows = new Map();
+    for ( let i = 0; i < vertices.length; i += 3 ) {
+
+        let x = (vertices as any)[ i ] + (scale.x / 2);
+        x = Math.floor(x / dx);
+        let y = (vertices as any)[ i + 1] + (scale.z / 2);
+        y = Math.floor(y / dy);
+        const rng = Math.random();
+        // console.log(`${heights[ Math.floor((x/dx)) * nsubdivs +  Math.floor((y/dy))]}`);
+        // j + 2 because it is the z component that we modify
+        (vertices as any)[ i + 2 ] = scale.y * rng;
+
+        if (!columsRows.get(x)) {
+            columsRows.set(x, new Map());
+        }
+        columsRows.get(x).set(y, rng);
+    }
+    console.log(columsRows)
+    let i, j;
+    for (i = 0; i <= nsubdivs; ++i) {
+        for (j = 0; j <= nsubdivs; ++j) {
+            console.log(`${i} - ${j}`)
+            heights.push( columsRows.get(j).get(i) );
+        }
+    }
+    threeFloor.geometry.computeVertexNormals();
+
+    let bodyDesc = RAPIER.RigidBodyDesc.fixed();
+    let body = world.createRigidBody(bodyDesc);
+    let groundColliderDesc = RAPIER.ColliderDesc.heightfield(nsubdivs, nsubdivs, new Float32Array(heights), scale);
+    world.createCollider(groundColliderDesc, body.handle);
 
 
     // Create a dynamic rigid-body.
@@ -118,7 +139,8 @@ import('@dimforge/rapier3d').then(RAPIER => {
         new BoxBufferGeometry(cube.dimension.hx * 2, cube.dimension.hy * 2, cube.dimension.hz * 2),
         new MeshPhongMaterial({ color: 'orange' })
     );
-    threeBox.castShadow = true
+    threeBox.castShadow = true;
+    threeBox.receiveShadow = true;
     scene.add(threeBox);
 
     // Game loop. Replace by your own game loop system.
@@ -148,6 +170,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
     window.addEventListener('click', event => {
         console.log('click')
-        rigidBody.applyImpulse({ x: 0.01, y: 3, z: -0.08 }, true);
+        rigidBody.applyImpulse({ x: 0, y: 3, z: -1 }, true);
     })
 })
