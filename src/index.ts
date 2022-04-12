@@ -257,7 +257,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     });
 
     const clock = new THREE.Clock();
-    // Game loop. Replace by your own game loop system.
+    // Game loop.
     let gameLoop = () => {
         let deltaTime = clock.getDelta();
 
