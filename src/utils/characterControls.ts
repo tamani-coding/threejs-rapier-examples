@@ -109,15 +109,16 @@ export class CharacterControls {
 
         const translation = this.rigidBody.translation();
         const cameraPositionOffset = this.camera.position.sub(this.model.position);
+        // update model and camera
         this.model.position.x = translation.x
         this.model.position.y = translation.y
         this.model.position.z = translation.z
+        this.updateCameraTarget(cameraPositionOffset)
 
+        this.walkDirection.y += -9.81 * delta
         this.ray.origin.x = translation.x
         this.ray.origin.y = translation.y
         this.ray.origin.z = translation.z
-
-        this.walkDirection.y += -9.81 * delta
         let hit = world.castRay(this.ray, 0.5, false, 0xfffffffff);
         if (hit) {
             const point = this.ray.pointAt(hit.toi);
@@ -129,9 +130,6 @@ export class CharacterControls {
 
         this.walkDirection.x = this.walkDirection.x * velocity * delta
         this.walkDirection.z = this.walkDirection.z * velocity * delta
-
-        this.updateCameraTarget(cameraPositionOffset)
-
     
         this.rigidBody.setNextKinematicTranslation( { 
             x: translation.x + this.walkDirection.x, 
