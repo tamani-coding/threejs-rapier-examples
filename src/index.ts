@@ -74,7 +74,7 @@ var characterControls: CharacterControls
 import('@dimforge/rapier3d').then(RAPIER => {
 
     function body(scene: THREE.Scene, world: World,
-        bodyType: 'dynamic' | 'kinematicPositionBased',
+        bodyType: 'dynamic' | 'static' | 'kinematicPositionBased',
         colliderType: 'cube' | 'sphere' | 'cylinder' | 'cone', dimension: any,
         translation: { x: number, y: number, z: number },
         rotation: { x: number, y: number, z: number, w: number },
@@ -86,27 +86,28 @@ import('@dimforge/rapier3d').then(RAPIER => {
             bodyDesc = RAPIER.RigidBodyDesc.dynamic();
         } else if (bodyType === 'kinematicPositionBased') {
             bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased();
+        } else if (bodyType === 'static') {
+            bodyDesc = RAPIER.RigidBodyDesc.fixed();
         }
         bodyDesc.setTranslation(translation.x, translation.y, translation.z)
             .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w })
             .setCanSleep(false);
 
-
         let rigidBody = world.createRigidBody(bodyDesc);
 
-        let dynamicCollider;
+        let collider;
         if (colliderType === 'cube') {
-            dynamicCollider = RAPIER.ColliderDesc.cuboid(dimension.hx, dimension.hy, dimension.hz);
+            collider = RAPIER.ColliderDesc.cuboid(dimension.hx, dimension.hy, dimension.hz);
         } else if (colliderType === 'sphere') {
-            dynamicCollider = RAPIER.ColliderDesc.ball(dimension.radius);
+            collider = RAPIER.ColliderDesc.ball(dimension.radius);
         } else if (colliderType === 'cylinder') {
-            dynamicCollider = RAPIER.ColliderDesc.cylinder(dimension.hh, dimension.radius);
+            collider = RAPIER.ColliderDesc.cylinder(dimension.hh, dimension.radius);
         } else if (colliderType === 'cone') {
-            dynamicCollider = RAPIER.ColliderDesc.cone(dimension.hh, dimension.radius);
+            collider = RAPIER.ColliderDesc.cone(dimension.hh, dimension.radius);
             // cone center of mass is at bottom
-            dynamicCollider.centerOfMass = {x:0, y:0, z:0}
+            collider.centerOfMass = {x:0, y:0, z:0}
         }
-        world.createCollider(dynamicCollider, rigidBody.handle);
+        world.createCollider(collider, rigidBody.handle);
 
         let bufferGeometry;
         if (colliderType === 'cube') {
@@ -195,28 +196,33 @@ import('@dimforge/rapier3d').then(RAPIER => {
     // Create Ground.
     generateGround();
 
+    // const staticB = body(scene, world, 'static', 'cube',
+    //     { hx: 20, hy: 1, hz: 20 }, { x: 0, y: 4, z: 0 },
+    //     { x: 0, y: 0, z: 0, w: 0 }, 'pink');
+    // bodys.push(staticB);
+
     const cubeBody = body(scene, world, 'dynamic', 'cube',
-        { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 7, z: 0 },
+        { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 15, z: 0 },
         { x: 0, y: 0.4, z: 0.7, w: 1.0 }, 'orange');
     bodys.push(cubeBody);
 
     const sphereBody = body(scene, world, 'dynamic', 'sphere',
-        { radius: 0.7 }, { x: 4, y: 5, z: 2 },
+        { radius: 0.7 }, { x: 4, y: 15, z: 2 },
         { x: 0, y: 1, z: 0, w: 0 }, 'blue');
     bodys.push(sphereBody);
 
     const sphereBody2 = body(scene, world, 'dynamic', 'sphere',
-        { radius: 0.7 }, { x: 0, y: 5, z: 0 },
+        { radius: 0.7 }, { x: 0, y: 15, z: 0 },
         { x: 0, y: 1, z: 0, w: 0 }, 'red');
     bodys.push(sphereBody2);
 
     const cylinderBody = body(scene, world, 'dynamic', 'cylinder',
-        { hh: 1.0, radius: 0.7 }, { x: -7, y: 5, z: 8 },
+        { hh: 1.0, radius: 0.7 }, { x: -7, y: 15, z: 8 },
         { x: 0, y: 1, z: 0, w: 0.5 }, 'green');
     bodys.push(cylinderBody);
 
     const coneBody = body(scene, world, 'dynamic', 'cone',
-        { hh: 1.0, radius: 1 }, { x: 7, y: 5, z: -8 },
+        { hh: 1.0, radius: 1 }, { x: 7, y: 15, z: -8 },
         { x: 0, y: 1, z: 0, w: 0.5 }, 'purple');
     bodys.push(coneBody);
 
@@ -237,7 +243,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     
 
         // RIGID BODY
-        let bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(-1, 5, 1)
+        let bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(-1, 15, 1)
         let rigidBody = world.createRigidBody(bodyDesc);
         let dynamicCollider = RAPIER.ColliderDesc.ball(CONTROLLER_BODY_RADIUS);
         world.createCollider(dynamicCollider, rigidBody.handle);
