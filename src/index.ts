@@ -1,6 +1,6 @@
 import { Ray, RigidBody, World } from '@dimforge/rapier3d';
 import * as THREE from 'three';
-import { BoxBufferGeometry, MeshPhongMaterial } from 'three';
+import { AmbientLight, BoxBufferGeometry, MeshPhongMaterial } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 // SCENE
@@ -29,7 +29,7 @@ orbitControls.maxDistance = 30
 // orbitControls.minPolarAngle = Math.PI / 4        // prevent top down view
 orbitControls.update();
 
-const dLight = new THREE.DirectionalLight();
+const dLight = new THREE.DirectionalLight('white', 0.6);
 dLight.position.x = 10;
 dLight.position.y = 30;
 dLight.castShadow = true;
@@ -43,6 +43,9 @@ dLight.shadow.camera.bottom = - d;
 scene.add(dLight);
 const helper = new THREE.CameraHelper(dLight.shadow.camera);
 scene.add(helper);
+
+const aLight = new THREE.AmbientLight('white', 0.4);
+scene.add(aLight);
 
 // ANIMATE
 document.body.appendChild(renderer.domElement);
@@ -160,7 +163,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     bodys.push(cubeBody);
 
     const sphereBody = body(scene, world, 'dynamic', 'sphere',
-        { radius: 0.5 }, { x: 4, y: 5, z: 2 },
+        { radius: 0.7 }, { x: 4, y: 5, z: 2 },
         { x: 0, y: 1, z: 0, w: 0 }, 'blue');
     bodys.push(sphereBody);
 
