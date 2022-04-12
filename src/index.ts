@@ -88,10 +88,15 @@ import('@dimforge/rapier3d').then(RAPIER => {
             bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased();
         } else if (bodyType === 'static') {
             bodyDesc = RAPIER.RigidBodyDesc.fixed();
+            bodyDesc.setCanSleep(false);
         }
-        bodyDesc.setTranslation(translation.x, translation.y, translation.z)
-            .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w })
-            .setCanSleep(false);
+
+        if (translation) {
+            bodyDesc.setTranslation(translation.x, translation.y, translation.z)
+        }
+        if(rotation) {
+            bodyDesc.setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w })
+        }
 
         let rigidBody = world.createRigidBody(bodyDesc);
 
@@ -196,10 +201,10 @@ import('@dimforge/rapier3d').then(RAPIER => {
     // Create Ground.
     generateGround();
 
-    // const staticB = body(scene, world, 'static', 'cube',
-    //     { hx: 20, hy: 1, hz: 20 }, { x: 0, y: 4, z: 0 },
-    //     { x: 0, y: 0, z: 0, w: 0 }, 'pink');
-    // bodys.push(staticB);
+    const staticB = body(scene, world, 'static', 'cube',
+        { hx: 20, hy: 1, hz: 20 }, { x: 0, y: 4, z: 0 },
+        null, 'pink');
+    bodys.push(staticB);
 
     const cubeBody = body(scene, world, 'dynamic', 'cube',
         { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 15, z: 0 },
