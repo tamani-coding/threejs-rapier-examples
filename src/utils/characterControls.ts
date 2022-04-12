@@ -135,6 +135,11 @@ export class CharacterControls {
         this.walkDirection.x = this.walkDirection.x * velocity * delta
         this.walkDirection.z = this.walkDirection.z * velocity * delta
     
+        if (translation.y < -1) {
+            // don't fall below ground
+            this.walkDirection.y = 10
+        }
+
         this.rigidBody.setNextKinematicTranslation( { 
             x: translation.x + this.walkDirection.x, 
             y: translation.y + this.walkDirection.y, 
