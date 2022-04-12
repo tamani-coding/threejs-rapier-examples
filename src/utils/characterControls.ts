@@ -110,41 +110,45 @@ export class CharacterControls {
         }
 
         const translation = this.rigidBody.translation();
-        const cameraPositionOffset = this.camera.position.sub(this.model.position);
-        // update model and camera
-        this.model.position.x = translation.x
-        this.model.position.y = translation.y
-        this.model.position.z = translation.z
-        this.updateCameraTarget(cameraPositionOffset)
-
-        this.walkDirection.y += this.lerp(this.storedFall, -9.81 * delta, 0.2)
-        this.storedFall = this.walkDirection.y
-        this.ray.origin.x = translation.x
-        this.ray.origin.y = translation.y
-        this.ray.origin.z = translation.z
-        let hit = world.castRay(this.ray, 0.5, false, 0xfffffffff);
-        if (hit) {
-            const point = this.ray.pointAt(hit.toi);
-            let diff = translation.y - ( point.y + CONTROLLER_BODY_RADIUS);
-            if (diff < 0.0) {
-                this.storedFall = 0
-                this.walkDirection.y = this.lerp(0, Math.abs(diff), 0.5)
-            }
-        }
-
-        this.walkDirection.x = this.walkDirection.x * velocity * delta
-        this.walkDirection.z = this.walkDirection.z * velocity * delta
-    
         if (translation.y < -1) {
             // don't fall below ground
-            this.walkDirection.y = 10
-        }
+            this.rigidBody.setNextKinematicTranslation( { 
+                x: 0, 
+                y: 10, 
+                z: 0 
+            });
+        } else {
+            const cameraPositionOffset = this.camera.position.sub(this.model.position);
+            // update model and camera
+            this.model.position.x = translation.x
+            this.model.position.y = translation.y
+            this.model.position.z = translation.z
+            this.updateCameraTarget(cameraPositionOffset)
+    
+            this.walkDirection.y += this.lerp(this.storedFall, -9.81 * delta, 0.2)
+            this.storedFall = this.walkDirection.y
+            this.ray.origin.x = translation.x
+            this.ray.origin.y = translation.y
+            this.ray.origin.z = translation.z
+            let hit = world.castRay(this.ray, 0.5, false, 0xfffffffff);
+            if (hit) {
+                const point = this.ray.pointAt(hit.toi);
+                let diff = translation.y - ( point.y + CONTROLLER_BODY_RADIUS);
+                if (diff < 0.0) {
+                    this.storedFall = 0
+                    this.walkDirection.y = this.lerp(0, Math.abs(diff), 0.5)
+                }
+            }
+    
+            this.walkDirection.x = this.walkDirection.x * velocity * delta
+            this.walkDirection.z = this.walkDirection.z * velocity * delta
 
-        this.rigidBody.setNextKinematicTranslation( { 
-            x: translation.x + this.walkDirection.x, 
-            y: translation.y + this.walkDirection.y, 
-            z: translation.z + this.walkDirection.z 
-        });
+            this.rigidBody.setNextKinematicTranslation( { 
+                x: translation.x + this.walkDirection.x, 
+                y: translation.y + this.walkDirection.y, 
+                z: translation.z + this.walkDirection.z 
+            });
+        }
     }
 
     private updateCameraTarget(offset: THREE.Vector3) {

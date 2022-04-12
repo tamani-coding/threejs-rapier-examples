@@ -44,8 +44,6 @@ dLight.shadow.camera.right = d;
 dLight.shadow.camera.top = d;
 dLight.shadow.camera.bottom = - d;
 scene.add(dLight);
-const helper = new THREE.CameraHelper(dLight.shadow.camera);
-scene.add(helper);
 
 const aLight = new THREE.AmbientLight('white', 0.4);
 scene.add(aLight);
@@ -171,7 +169,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
             columsRows.get(column).set(row, randomHeight);
         }
         threeFloor.geometry.computeVertexNormals();
-        
+
         // store height data into column-major-order matrix array
         for (let i = 0; i <= nsubdivs; ++i) {
             for (let j = 0; j <= nsubdivs; ++j) {
