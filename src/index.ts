@@ -220,8 +220,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     
 
         // RIGID BODY
-        let bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased();
-        bodyDesc.setTranslation(-1, 3, 1)
+        let bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(-1, 5, 1)
         let rigidBody = world.createRigidBody(bodyDesc);
         let dynamicCollider = RAPIER.ColliderDesc.ball(CONTROLLER_BODY_RADIUS);
         world.createCollider(dynamicCollider, rigidBody.handle);
