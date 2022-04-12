@@ -1,7 +1,10 @@
+import { CharacterControls, CONTROLLER_BODY_RADIUS } from './utils/characterControls';
+import { KeyDisplay } from './utils/keydisplay';
 import { Ray, RigidBody, World } from '@dimforge/rapier3d';
 import * as THREE from 'three';
 import { AmbientLight, BoxBufferGeometry, MeshPhongMaterial } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // SCENE
 const scene = new THREE.Scene();
@@ -23,8 +26,8 @@ renderer.shadowMap.enabled = true
 const orbitControls = new OrbitControls(camera, renderer.domElement);
 orbitControls.enableDamping = true
 orbitControls.enablePan = true
-orbitControls.minDistance = 10
-orbitControls.maxDistance = 30
+orbitControls.minDistance = 5
+orbitControls.maxDistance = 20
 // orbitControls.maxPolarAngle = Math.PI / 2 - 0.05 // prevent camera below ground
 // orbitControls.minPolarAngle = Math.PI / 4        // prevent top down view
 orbitControls.update();
@@ -65,6 +68,10 @@ function loadTexture(path: string): THREE.Texture {
     texture.repeat.y = 10;
     return texture;
 }
+
+
+// MODEL WITH ANIMATIONS
+var characterControls: CharacterControls
 
 import('@dimforge/rapier3d').then(RAPIER => {
 
@@ -191,7 +198,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
         { x: 0, y: 1, z: 0, w: 0 }, 'blue');
     bodys.push(sphereBody);
 
-    const kinematicSphere = body(scene, world, 'kinematicPositionBased', 'sphere',
+    const kinematicSphere = body(scene, world, 'dynamic', 'sphere',
         { radius: 0.7 }, { x: 0, y: 5, z: 0 },
         { x: 0, y: 1, z: 0, w: 0 }, 'red');
     bodys.push(kinematicSphere);
@@ -201,11 +208,43 @@ import('@dimforge/rapier3d').then(RAPIER => {
         { x: 0, y: -1, z: 0} 
     );
 
+    // character controller
+    new GLTFLoader().load('models/Soldier.glb', function (gltf) {
+        const model = gltf.scene;
+        model.traverse(function (object: any) {
+            if (object.isMesh) object.castShadow = true;
+        });
+        scene.add(model);
+    
+        const gltfAnimations: THREE.AnimationClip[] = gltf.animations;
+        const mixer = new THREE.AnimationMixer(model);
+        const animationsMap: Map<string, THREE.AnimationAction> = new Map()
+        gltfAnimations.filter(a => a.name != 'TPose').forEach((a: THREE.AnimationClip) => {
+            animationsMap.set(a.name, mixer.clipAction(a))
+        })
+    
+
+        // RIGID BODY
+        let bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased();
+        bodyDesc.setTranslation(-1, 3, 1)
+        let rigidBody = world.createRigidBody(bodyDesc);
+        let dynamicCollider = RAPIER.ColliderDesc.ball(CONTROLLER_BODY_RADIUS);
+        world.createCollider(dynamicCollider, rigidBody.handle);
+
+        characterControls = new CharacterControls(model, mixer, 
+            animationsMap, orbitControls, 
+            camera,  'Idle',
+            ray, rigidBody)
+    });
+
     const clock = new THREE.Clock();
     // Game loop. Replace by your own game loop system.
     let gameLoop = () => {
         let deltaTime = clock.getDelta();
-        move(world, ray, kinematicSphere.rigid, deltaTime);
+
+        if (characterControls) {
+            characterControls.update(world, deltaTime, keysPressed);
+        }
 
         // Step the simulation forward.  
         world.step();
@@ -232,93 +271,19 @@ import('@dimforge/rapier3d').then(RAPIER => {
     };
 
     gameLoop();
-
-    window.addEventListener('click', event => {
-        // cubeBody.rigid.applyImpulse({ x: 0, y: 3, z: 1 }, true);
-        // sphereBody.rigid.applyImpulse({ x: 0, y: 2, z: -0.4 }, true);
-    })
 })
 
 
 const keysPressed: any = {}
+const keyDisplayQueue = new KeyDisplay();
 document.addEventListener('keydown', (event) => {
+    keyDisplayQueue.down(event.key)
+    if (event.shiftKey && characterControls) {
+        characterControls.switchRunToggle()
+    }
     keysPressed[event.key.toLowerCase()] = true
 }, false);
 document.addEventListener('keyup', (event) => {
+    keyDisplayQueue.up(event.key);
     keysPressed[event.key.toLowerCase()] = false
 }, false);
-
-
-const rotateYAxis = new THREE.Vector3(0, 1, 0);
-const walkDirection  = new THREE.Vector3();
-const rotateWalkDirection = new THREE.Quaternion();
-const MOVEMENT_SPEED_PER_SECOND = 4;
-function move(world: World, ray: Ray, rigid: RigidBody, delta: number) {
-    const w = keysPressed['w'];
-    const a = keysPressed['a'];
-    const s = keysPressed['s'];
-    const d = keysPressed['d'];
-
-    walkDirection.x = 0;
-    walkDirection.y = 0;
-    walkDirection.z = 0;
-
-    if (w || a || s || d) {
-        const offset = directionOffset(w,a,s,d);
-        camera.getWorldDirection(walkDirection );
-        walkDirection.y = 0;
-        rotateWalkDirection.setFromAxisAngle(rotateYAxis, offset);
-        walkDirection.applyQuaternion(rotateWalkDirection);
-    }
-    
-    const translation = rigid.translation();
-
-    walkDirection.normalize();
-    walkDirection.multiplyScalar(MOVEMENT_SPEED_PER_SECOND * delta);
-
-    ray.origin.x = translation.x
-    ray.origin.y = translation.y
-    ray.origin.z = translation.z
-    let hit = world.castRay(ray, 0.6, false, 0xfffffffff);
-    if (!hit) {
-        walkDirection.y += -9.81 * delta
-    } else {
-        const point = ray.pointAt(hit.toi);
-        const up = ray.origin.y - point.y - 0.5;
-        if (up > 0.2 || up < 0) {
-            walkDirection.y += Math.abs(up)
-        }
-    }
-
-    rigid.setNextKinematicTranslation( { 
-        x: translation.x + walkDirection.x, 
-        y: translation.y + walkDirection.y, 
-        z: translation.z + walkDirection.z 
-    });
-}
-
-function directionOffset(w: boolean, a: boolean, s: boolean, d: boolean): number {
-    var directionOffset = 0 // w
-
-    if (w) {
-        if (a) {
-            directionOffset = Math.PI / 4 // w+a
-        } else if (d) {
-            directionOffset = - Math.PI / 4 // w+d
-        }
-    } else if (s) {
-        if (a) {
-            directionOffset = Math.PI / 4 + Math.PI / 2 // s+a
-        } else if (d) {
-            directionOffset = -Math.PI / 4 - Math.PI / 2 // s+d
-        } else {
-            directionOffset = Math.PI // s
-        }
-    } else if (a) {
-        directionOffset = Math.PI / 2 // a
-    } else if (d) {
-        directionOffset = - Math.PI / 2 // d
-    }
-
-    return directionOffset
-}
