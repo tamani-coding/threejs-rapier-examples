@@ -155,29 +155,26 @@ import('@dimforge/rapier3d').then(RAPIER => {
         const vertices = threeFloor.geometry.attributes.position.array;
         const dx = scale.x / nsubdivs;
         const dy = scale.z / nsubdivs;
-
+        // store height data in map column-row map
         const columsRows = new Map();
         for (let i = 0; i < vertices.length; i += 3) {
-    
-            let x = Math.abs((vertices as any)[i] + (scale.x / 2));
-            x = Math.floor(x / dx);
-            let y = Math.abs((vertices as any)[i + 1] - (scale.z / 2));
-            y = Math.floor(y / dy);
-            const rng = Math.random();
-            // console.log(`${heights[ Math.floor((x/dx)) * nsubdivs +  Math.floor((y/dy))]}`);
-            // j + 2 because it is the z component that we modify
-            (vertices as any)[i + 2] = scale.y * rng;
-    
-            if (!columsRows.get(y)) {
-                columsRows.set(y, new Map());
+            // translate into colum / row indices
+            let row = Math.floor(Math.abs((vertices as any)[i] + (scale.x / 2)) / dx);
+            let column = Math.floor(Math.abs((vertices as any)[i + 1] - (scale.z / 2)) / dy);
+            // generate height for this column & row
+            const randomHeight = Math.random();
+            (vertices as any)[i + 2] = scale.y * randomHeight;
+            // store height
+            if (!columsRows.get(column)) {
+                columsRows.set(column, new Map());
             }
-            columsRows.get(y).set(x, rng);
+            columsRows.get(column).set(row, randomHeight);
         }
         threeFloor.geometry.computeVertexNormals();
+        
         // store height data into column-major-order matrix array
-        let i, j;
-        for (i = 0; i <= nsubdivs; ++i) {
-            for (j = 0; j <= nsubdivs; ++j) {
+        for (let i = 0; i <= nsubdivs; ++i) {
+            for (let j = 0; j <= nsubdivs; ++j) {
                 heights.push(columsRows.get(j).get(i));
             }
         }
