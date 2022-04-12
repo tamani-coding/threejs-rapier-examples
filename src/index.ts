@@ -30,7 +30,7 @@ orbitControls.maxDistance = 30
 orbitControls.update();
 
 const dLight = new THREE.DirectionalLight('white', 0.6);
-dLight.position.x = 10;
+dLight.position.x = 20;
 dLight.position.y = 30;
 dLight.castShadow = true;
 dLight.shadow.mapSize.width = 4096;
@@ -57,6 +57,14 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener('resize', onWindowResize);
+
+function loadTexture(path: string): THREE.Texture {
+    const texture = new THREE.TextureLoader().load(path);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.x = 10;
+    texture.repeat.y = 10;
+    return texture;
+}
 
 import('@dimforge/rapier3d').then(RAPIER => {
 
@@ -104,6 +112,65 @@ import('@dimforge/rapier3d').then(RAPIER => {
         return { rigid: rigidBody, mesh: threeMesh };
     }
 
+    function generateGround() {
+        let nsubdivs = 20;
+        let scale = new RAPIER.Vector3(70.0, 2.0, 70.0);
+        let heights: number[] = []
+    
+        // three plane
+        const threeFloor = new THREE.Mesh(
+            new THREE.PlaneBufferGeometry(scale.x, scale.z, nsubdivs, nsubdivs),
+            new THREE.MeshStandardMaterial({
+                 map: loadTexture('/textures/grass/Grass_005_BaseColor.jpg'),
+                 normalMap: loadTexture('/textures/grass/Grass_005_Normal.jpg'),
+                 aoMap: loadTexture('/textures/grass/Grass_005_AmbientOcclusion.jpg'),
+                 roughnessMap: loadTexture('/textures/grass/Grass_005_Roughness.jpg'),
+                 roughness: 0.6
+            }));
+        threeFloor.rotateX(- Math.PI / 2);
+        threeFloor.receiveShadow = true;
+        threeFloor.castShadow = true;
+        scene.add(threeFloor);
+    
+        // add height data to plane
+        const vertices = threeFloor.geometry.attributes.position.array;
+        const dx = scale.x / nsubdivs;
+        const dy = scale.z / nsubdivs;
+
+        const columsRows = new Map();
+        for (let i = 0; i < vertices.length; i += 3) {
+    
+            let x = Math.abs((vertices as any)[i] + (scale.x / 2));
+            x = Math.floor(x / dx);
+            let y = Math.abs((vertices as any)[i + 1] - (scale.z / 2));
+            y = Math.floor(y / dy);
+            const rng = Math.random();
+            // console.log(`${heights[ Math.floor((x/dx)) * nsubdivs +  Math.floor((y/dy))]}`);
+            // j + 2 because it is the z component that we modify
+            (vertices as any)[i + 2] = scale.y * rng;
+    
+            if (!columsRows.get(y)) {
+                columsRows.set(y, new Map());
+            }
+            columsRows.get(y).set(x, rng);
+        }
+        threeFloor.geometry.computeVertexNormals();
+        // store height data into column-major-order matrix array
+        let i, j;
+        for (i = 0; i <= nsubdivs; ++i) {
+            for (j = 0; j <= nsubdivs; ++j) {
+                heights.push(columsRows.get(j).get(i));
+            }
+        }
+    
+        let groundBodyDesc = RAPIER.RigidBodyDesc.fixed();
+        let groundBody = world.createRigidBody(groundBodyDesc);
+        let groundCollider = RAPIER.ColliderDesc.heightfield(
+            nsubdivs, nsubdivs, new Float32Array(heights), scale
+        );
+        world.createCollider(groundCollider, groundBody.handle);
+    }
+
     // Use the RAPIER module here.
     let gravity = { x: 0.0, y: -9.81, z: 0.0 };
     let world = new RAPIER.World(gravity);
@@ -112,50 +179,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     const bodys: { rigid: RigidBody, mesh: THREE.Mesh }[] = []
 
     // Create Ground.
-    let nsubdivs = 20;
-    let scale = new RAPIER.Vector3(70.0, 3.0, 70.0);
-    let heights: number[] = []
-
-    const threeFloor = new THREE.Mesh(
-        new THREE.PlaneBufferGeometry(scale.x, scale.z, nsubdivs, nsubdivs),
-        new THREE.MeshPhongMaterial({ color: 'green' }));
-    threeFloor.rotateX(- Math.PI / 2);
-    threeFloor.receiveShadow = true;
-    threeFloor.castShadow = true;
-    scene.add(threeFloor);
-
-    const vertices = threeFloor.geometry.attributes.position.array;
-    const dx = scale.x / nsubdivs;
-    const dy = scale.z / nsubdivs;
-    const columsRows = new Map();
-    for (let i = 0; i < vertices.length; i += 3) {
-
-        let x = Math.abs((vertices as any)[i] + (scale.x / 2));
-        x = Math.floor(x / dx);
-        let y = Math.abs((vertices as any)[i + 1] - (scale.z / 2));
-        y = Math.floor(y / dy);
-        const rng = Math.random();
-        // console.log(`${heights[ Math.floor((x/dx)) * nsubdivs +  Math.floor((y/dy))]}`);
-        // j + 2 because it is the z component that we modify
-        (vertices as any)[i + 2] = scale.y * rng;
-
-        if (!columsRows.get(y)) {
-            columsRows.set(y, new Map());
-        }
-        columsRows.get(y).set(x, rng);
-    }
-    let i, j;
-    for (i = 0; i <= nsubdivs; ++i) {
-        for (j = 0; j <= nsubdivs; ++j) {
-            heights.push(columsRows.get(j).get(i));
-        }
-    }
-    threeFloor.geometry.computeVertexNormals();
-
-    let groundBodyDesc = RAPIER.RigidBodyDesc.fixed();
-    let groundBody = world.createRigidBody(groundBodyDesc);
-    let groundCollider = RAPIER.ColliderDesc.heightfield(nsubdivs, nsubdivs, new Float32Array(heights), scale);
-    world.createCollider(groundCollider, groundBody.handle);
+    generateGround();
 
     const cubeBody = body(scene, world, 'dynamic', 'cube',
         { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 7, z: 0 },
@@ -168,7 +192,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
     bodys.push(sphereBody);
 
     const kinematicSphere = body(scene, world, 'kinematicPositionBased', 'sphere',
-        { radius: 0.7 }, { x: 0, y: 4, z: 0 },
+        { radius: 0.7 }, { x: 0, y: 5, z: 0 },
         { x: 0, y: 1, z: 0, w: 0 }, 'red');
     bodys.push(kinematicSphere);
 
