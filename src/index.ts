@@ -121,7 +121,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
     function generateGround() {
         let nsubdivs = 20;
-        let scale = new RAPIER.Vector3(70.0, 2.0, 70.0);
+        let scale = new RAPIER.Vector3(70.0, 3.0, 70.0);
         let heights: number[] = []
     
         // three plane
@@ -203,11 +203,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
         { x: 0, y: 1, z: 0, w: 0 }, 'red');
     bodys.push(kinematicSphere);
 
-    const ray = new RAPIER.Ray( 
-        { x: 0, y: 0, z: 0 },
-        { x: 0, y: -1, z: 0} 
-    );
-
     // character controller
     new GLTFLoader().load('models/Soldier.glb', function (gltf) {
         const model = gltf.scene;
@@ -234,7 +229,10 @@ import('@dimforge/rapier3d').then(RAPIER => {
         characterControls = new CharacterControls(model, mixer, 
             animationsMap, orbitControls, 
             camera,  'Idle',
-            ray, rigidBody)
+            new RAPIER.Ray( 
+                { x: 0, y: 0, z: 0 },
+                { x: 0, y: -1, z: 0} 
+            ), rigidBody)
     });
 
     const clock = new THREE.Clock();

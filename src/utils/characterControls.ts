@@ -123,7 +123,7 @@ export class CharacterControls {
         if (hit) {
             const point = this.ray.pointAt(hit.toi);
             const up = this.ray.origin.y - point.y - CONTROLLER_BODY_RADIUS;
-            if (up > 0.001 || up < 0) {
+            if (up < 0) {
                 this.walkDirection.y = Math.abs(up)
             }
         }
