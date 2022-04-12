@@ -77,7 +77,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
     function body(scene: THREE.Scene, world: World,
         bodyType: 'dynamic' | 'kinematicPositionBased',
-        colliderType: 'cube' | 'sphere', dimension: any,
+        colliderType: 'cube' | 'sphere' | 'cylinder' | 'cone', dimension: any,
         translation: { x: number, y: number, z: number },
         rotation: { x: number, y: number, z: number, w: number },
         color: string): { rigid: RigidBody, mesh: THREE.Mesh } {
@@ -101,6 +101,12 @@ import('@dimforge/rapier3d').then(RAPIER => {
             dynamicCollider = RAPIER.ColliderDesc.cuboid(dimension.hx, dimension.hy, dimension.hz);
         } else if (colliderType === 'sphere') {
             dynamicCollider = RAPIER.ColliderDesc.ball(dimension.radius);
+        } else if (colliderType === 'cylinder') {
+            dynamicCollider = RAPIER.ColliderDesc.cylinder(dimension.hh, dimension.radius);
+        } else if (colliderType === 'cone') {
+            dynamicCollider = RAPIER.ColliderDesc.cone(dimension.hh, dimension.radius);
+            // cone center of mass is at bottom
+            dynamicCollider.centerOfMass = {x:0, y:0, z:0}
         }
         world.createCollider(dynamicCollider, rigidBody.handle);
 
@@ -109,6 +115,12 @@ import('@dimforge/rapier3d').then(RAPIER => {
             bufferGeometry = new BoxBufferGeometry(dimension.hx * 2, dimension.hy * 2, dimension.hz * 2);
         } else if (colliderType === 'sphere') {
             bufferGeometry = new THREE.SphereBufferGeometry(dimension.radius, 32, 32);
+        } else if (colliderType === 'cylinder') {
+            bufferGeometry = new THREE.CylinderBufferGeometry(dimension.radius, 
+                dimension.radius, dimension.hh * 2,  32, 32);
+        } else if (colliderType === 'cone') {
+            bufferGeometry = new THREE.ConeBufferGeometry(dimension.radius, dimension.hh * 2,  
+                32, 32);
         }
 
         const threeMesh = new THREE.Mesh(bufferGeometry, new MeshPhongMaterial({ color: color }));
@@ -198,10 +210,20 @@ import('@dimforge/rapier3d').then(RAPIER => {
         { x: 0, y: 1, z: 0, w: 0 }, 'blue');
     bodys.push(sphereBody);
 
-    const kinematicSphere = body(scene, world, 'dynamic', 'sphere',
+    const sphereBody2 = body(scene, world, 'dynamic', 'sphere',
         { radius: 0.7 }, { x: 0, y: 5, z: 0 },
         { x: 0, y: 1, z: 0, w: 0 }, 'red');
-    bodys.push(kinematicSphere);
+    bodys.push(sphereBody2);
+
+    const cylinderBody = body(scene, world, 'dynamic', 'cylinder',
+        { hh: 1.0, radius: 0.7 }, { x: -7, y: 5, z: 8 },
+        { x: 0, y: 1, z: 0, w: 0.5 }, 'green');
+    bodys.push(cylinderBody);
+
+    const coneBody = body(scene, world, 'dynamic', 'cone',
+        { hh: 1.0, radius: 1 }, { x: 7, y: 5, z: -8 },
+        { x: 0, y: 1, z: 0, w: 0.5 }, 'purple');
+    bodys.push(coneBody);
 
     // character controller
     new GLTFLoader().load('models/Soldier.glb', function (gltf) {
