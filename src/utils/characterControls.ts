@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { A, D, DIRECTIONS, S, W } from './keydisplay'
 
-export const CONTROLLER_BODY_RADIUS = 0.3;
+export const CONTROLLER_BODY_RADIUS = 0.25;
 
 export class CharacterControls {
 
@@ -122,9 +122,8 @@ export class CharacterControls {
         let hit = world.castRay(this.ray, 0.5, false, 0xfffffffff);
         if (hit) {
             const point = this.ray.pointAt(hit.toi);
-            const diff = translation.y - ( point.y + CONTROLLER_BODY_RADIUS);
-            console.log(diff)
-            if (diff < 0) {
+            let diff = translation.y - ( point.y + CONTROLLER_BODY_RADIUS);
+            if (diff < 0.0) {
                 this.walkDirection.y = Math.abs(diff)
             }
         }
