@@ -99,6 +99,7 @@ export class CharacterControls {
 
             // calculate direction
             this.camera.getWorldDirection(this.walkDirection)
+            this.walkDirection.y = 0
             this.walkDirection.normalize()
             this.walkDirection.applyAxisAngle(this.rotateAngle, directionOffset)
 
@@ -116,14 +117,13 @@ export class CharacterControls {
         this.ray.origin.y = translation.y
         this.ray.origin.z = translation.z
 
+        this.walkDirection.y += -9.81 * delta
         let hit = world.castRay(this.ray, 0.5, false, 0xfffffffff);
-        if (!hit) {
-            this.walkDirection.y += -9.81 * delta
-        } else {
+        if (hit) {
             const point = this.ray.pointAt(hit.toi);
             const up = this.ray.origin.y - point.y - CONTROLLER_BODY_RADIUS;
             if (up > 0.001 || up < 0) {
-                this.walkDirection.y += Math.abs(up)
+                this.walkDirection.y = Math.abs(up)
             }
         }
 

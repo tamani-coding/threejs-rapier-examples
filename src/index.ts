@@ -28,8 +28,8 @@ orbitControls.enableDamping = true
 orbitControls.enablePan = true
 orbitControls.minDistance = 5
 orbitControls.maxDistance = 20
-// orbitControls.maxPolarAngle = Math.PI / 2 - 0.05 // prevent camera below ground
-// orbitControls.minPolarAngle = Math.PI / 4        // prevent top down view
+orbitControls.maxPolarAngle = Math.PI / 2 - 0.05 // prevent camera below ground
+orbitControls.minPolarAngle = Math.PI / 4        // prevent top down view
 orbitControls.update();
 
 const dLight = new THREE.DirectionalLight('white', 0.6);
