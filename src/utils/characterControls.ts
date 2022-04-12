@@ -22,6 +22,7 @@ export class CharacterControls {
     rotateAngle = new THREE.Vector3(0, 1, 0)
     rotateQuarternion: THREE.Quaternion = new THREE.Quaternion()
     cameraTarget = new THREE.Vector3()
+    storedFall = 0
     
     // constants
     fadeDuration: number = 0.2
@@ -30,6 +31,7 @@ export class CharacterControls {
 
     ray: Ray
     rigidBody: RigidBody
+    lerp = (x: number, y: number, a: number) => x * (1 - a) + y * a;
 
     constructor(model: THREE.Group,
         mixer: THREE.AnimationMixer, animationsMap: Map<string, THREE.AnimationAction>,
@@ -115,7 +117,8 @@ export class CharacterControls {
         this.model.position.z = translation.z
         this.updateCameraTarget(cameraPositionOffset)
 
-        this.walkDirection.y += -9.81 * delta
+        this.walkDirection.y += this.lerp(this.storedFall, -9.81 * delta, 0.2)
+        this.storedFall = this.walkDirection.y
         this.ray.origin.x = translation.x
         this.ray.origin.y = translation.y
         this.ray.origin.z = translation.z
@@ -124,7 +127,8 @@ export class CharacterControls {
             const point = this.ray.pointAt(hit.toi);
             let diff = translation.y - ( point.y + CONTROLLER_BODY_RADIUS);
             if (diff < 0.0) {
-                this.walkDirection.y = Math.abs(diff)
+                this.storedFall = 0
+                this.walkDirection.y = this.lerp(0, Math.abs(diff), 0.55)
             }
         }
 
@@ -177,4 +181,5 @@ export class CharacterControls {
 
         return directionOffset
     }
+
 }
