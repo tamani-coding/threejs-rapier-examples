@@ -135,9 +135,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
         return { rigid: rigidBody, mesh: threeMesh };
     }
 
-    function generateTerrain() {
-        let nsubdivs = 20;
-        let scale = new RAPIER.Vector3(70.0, 3.0, 70.0);
+    function generateTerrain(nsubdivs: number, scale: { x: number, y: number, z: number }) {
         let heights: number[] = []
     
         // three plane
@@ -199,11 +197,13 @@ import('@dimforge/rapier3d').then(RAPIER => {
     const bodys: { rigid: RigidBody, mesh: THREE.Mesh }[] = []
 
     // Create Ground.
-    generateTerrain();
+    let nsubdivs = 20;
+    let scale = new RAPIER.Vector3(70.0, 3.0, 70.0);
+    generateTerrain(nsubdivs, scale);
 
     const staticB = body(scene, world, 'static', 'cube',
-        { hx: 20, hy: 1, hz: 20 }, { x: 0, y: 4, z: 0 },
-        null, 'pink');
+        { hx: 10, hy: 0.8, hz: 10 }, { x: scale.x / 2, y: 2.5, z: 0 },
+        { x: 0, y: 0, z:  0.166, w: 0.986 }, 'pink');
     bodys.push(staticB);
 
     const cubeBody = body(scene, world, 'dynamic', 'cube',

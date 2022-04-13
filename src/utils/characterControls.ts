@@ -53,7 +53,7 @@ export class CharacterControls {
 
         this.orbitControl = orbitControl
         this.camera = camera
-        this.updateCameraTarget(new THREE.Vector3(0,2,10))
+        this.updateCameraTarget(new THREE.Vector3(0,1,5))
     }
 
     public switchRunToggle() {
