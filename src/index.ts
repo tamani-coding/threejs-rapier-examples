@@ -77,7 +77,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
         bodyType: 'dynamic' | 'static' | 'kinematicPositionBased',
         colliderType: 'cube' | 'sphere' | 'cylinder' | 'cone', dimension: any,
         translation: { x: number, y: number, z: number },
-        rotation: { x: number, y: number, z: number, w: number },
+        rotation: { x: number, y: number, z: number },
         color: string): { rigid: RigidBody, mesh: THREE.Mesh } {
 
         let bodyDesc
@@ -95,7 +95,10 @@ import('@dimforge/rapier3d').then(RAPIER => {
             bodyDesc.setTranslation(translation.x, translation.y, translation.z)
         }
         if(rotation) {
-            bodyDesc.setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w })
+            const q = new THREE.Quaternion().setFromEuler(
+                new THREE.Euler( rotation.x, rotation.y, rotation.z, 'XYZ' )
+            )
+            bodyDesc.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
         }
 
         let rigidBody = world.createRigidBody(bodyDesc);
@@ -203,32 +206,32 @@ import('@dimforge/rapier3d').then(RAPIER => {
 
     const staticB = body(scene, world, 'static', 'cube',
         { hx: 10, hy: 0.8, hz: 10 }, { x: scale.x / 2, y: 2.5, z: 0 },
-        { x: 0, y: 0, z:  0.166, w: 0.986 }, 'pink');
+        { x: 0, y: 0, z:  0.3 }, 'pink');
     bodys.push(staticB);
 
     const cubeBody = body(scene, world, 'dynamic', 'cube',
         { hx: 0.5, hy: 0.5, hz: 0.5 }, { x: 0, y: 15, z: 0 },
-        { x: 0, y: 0.4, z: 0.7, w: 1.0 }, 'orange');
+        { x: 0, y: 0.4, z: 0.7 }, 'orange');
     bodys.push(cubeBody);
 
     const sphereBody = body(scene, world, 'dynamic', 'sphere',
         { radius: 0.7 }, { x: 4, y: 15, z: 2 },
-        { x: 0, y: 1, z: 0, w: 0 }, 'blue');
+        { x: 0, y: 1, z: 0 }, 'blue');
     bodys.push(sphereBody);
 
     const sphereBody2 = body(scene, world, 'dynamic', 'sphere',
         { radius: 0.7 }, { x: 0, y: 15, z: 0 },
-        { x: 0, y: 1, z: 0, w: 0 }, 'red');
+        { x: 0, y: 1, z: 0 }, 'red');
     bodys.push(sphereBody2);
 
     const cylinderBody = body(scene, world, 'dynamic', 'cylinder',
         { hh: 1.0, radius: 0.7 }, { x: -7, y: 15, z: 8 },
-        { x: 0, y: 1, z: 0, w: 0.5 }, 'green');
+        { x: 0, y: 1, z: 0 }, 'green');
     bodys.push(cylinderBody);
 
     const coneBody = body(scene, world, 'dynamic', 'cone',
         { hh: 1.0, radius: 1 }, { x: 7, y: 15, z: -8 },
-        { x: 0, y: 1, z: 0, w: 0.5 }, 'purple');
+        { x: 0, y: 1, z: 0 }, 'purple');
     bodys.push(coneBody);
 
     // character controller
