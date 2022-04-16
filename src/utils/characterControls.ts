@@ -29,6 +29,8 @@ export class CharacterControls {
     // state
     toggleRun: boolean = true
     currentAction: string
+    startJumping = false;
+    isGrounded = false;
     
     // temporary data
     walkDirection = new THREE.Vector3()
@@ -41,6 +43,7 @@ export class CharacterControls {
     fadeDuration: number = 0.2
     runVelocity = 5
     walkVelocity = 2
+    storedJumpVelocity = 0;
 
     ray: Ray
     rigidBody: RigidBody
@@ -73,17 +76,28 @@ export class CharacterControls {
         this.toggleRun = !this.toggleRun
     }
 
+    public jump() {
+        if (this.isGrounded) {
+            this.startJumping = true;
+        }
+    }
+
     public update(world: World, delta: number, keysPressed: any) {
         const directionPressed = DIRECTIONS.some(key => keysPressed[key] == true)
 
         var play = '';
-        if (directionPressed && this.toggleRun) {
+        if (!this.isGrounded) {
+            play = this.animationKeys.fallIdle
+        } else if (directionPressed && this.toggleRun) {
             play = this.animationKeys.run
         } else if (directionPressed) {
             play = this.animationKeys.walk
         } else {
             play = this.animationKeys.idle
         }
+
+        const isWalking = directionPressed && !this.toggleRun
+        const isRunning = directionPressed && this.toggleRun
 
         if (this.currentAction != play) {
             const toPlay = this.animationsMap.get(play)
@@ -100,7 +114,7 @@ export class CharacterControls {
         this.walkDirection.x = this.walkDirection.y = this.walkDirection.z = 0
 
         let velocity = 0
-        if (this.currentAction == this.animationKeys.run || this.currentAction == this.animationKeys.walk) {
+        if (isWalking || isRunning) {
             // calculate towards camera direction
             var angleYCameraDirection = Math.atan2(
                     (this.camera.position.x - this.model.position.x), 
@@ -119,7 +133,7 @@ export class CharacterControls {
             this.walkDirection.applyAxisAngle(this.rotateAngle, directionOffset)
 
             // run/walk velocity
-            velocity = this.currentAction == this.animationKeys.run ? this.runVelocity : this.walkVelocity
+            velocity = isRunning ? this.runVelocity : this.walkVelocity
         }
 
         const translation = this.rigidBody.translation();
@@ -138,20 +152,32 @@ export class CharacterControls {
             this.model.position.z = translation.z
             this.updateCameraTarget(cameraPositionOffset)
     
-            this.walkDirection.y += this.lerp(this.storedFall, -9.81 * delta, 0.10)
+            if (this.startJumping && this.isGrounded) {
+                this.isGrounded = false;
+                this.storedJumpVelocity = 8.0;
+            } 
+            this.storedJumpVelocity = this.lerp(this.storedJumpVelocity, 0 , 0.12)
+
+            this.walkDirection.y += this.storedJumpVelocity * delta + this.lerp(this.storedFall, -9.81 * delta, 0.10)
             this.storedFall = this.walkDirection.y
-            this.ray.origin.x = translation.x
-            this.ray.origin.y = translation.y
-            this.ray.origin.z = translation.z
-            let hit = world.castRay(this.ray, 0.5, false, 0xfffffffff);
-            if (hit) {
-                const point = this.ray.pointAt(hit.toi);
-                let diff = translation.y - ( point.y + CONTROLLER_BODY_RADIUS);
-                if (diff < 0.0) {
-                    this.storedFall = 0
-                    this.walkDirection.y = this.lerp(0, Math.abs(diff), 0.5)
+
+            if (!this.startJumping) {
+                this.ray.origin.x = translation.x
+                this.ray.origin.y = translation.y
+                this.ray.origin.z = translation.z
+                let hit = world.castRay(this.ray, 0.5, false, 0xfffffffff);
+                if (hit) {
+                    const point = this.ray.pointAt(hit.toi);
+                    let diff = translation.y - (point.y + CONTROLLER_BODY_RADIUS);
+                    if (diff < 0.0) {
+                        this.storedFall = 0
+                        this.walkDirection.y = this.lerp(0, Math.abs(diff), 0.5)
+                        this.isGrounded = true;
+                    }
                 }
             }
+
+            this.startJumping = false;
     
             this.walkDirection.x = this.walkDirection.x * velocity * delta
             this.walkDirection.z = this.walkDirection.z * velocity * delta

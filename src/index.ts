@@ -1,5 +1,5 @@
 import { CharacterControls, CONTROLLER_BODY_RADIUS, AnimationKeys } from './utils/characterControls';
-import { KeyDisplay } from './utils/keydisplay';
+import { KeyDisplay, SPACE } from './utils/keydisplay';
 import { Ray, RigidBody, World } from '@dimforge/rapier3d';
 import * as THREE from 'three';
 import { AmbientLight, BoxBufferGeometry, MeshPhongMaterial } from 'three';
@@ -286,8 +286,13 @@ const keysPressed: any = {}
 const keyDisplayQueue = new KeyDisplay();
 document.addEventListener('keydown', (event) => {
     keyDisplayQueue.down(event.key)
-    if (event.shiftKey && characterControls) {
-        characterControls.switchRunToggle()
+    if (characterControls) {
+        if (event.shiftKey) {
+            characterControls.switchRunToggle()
+        }
+        if (event.key === SPACE) {
+            characterControls.jump();
+        }
     }
     keysPressed[event.key.toLowerCase()] = true
 }, false);
