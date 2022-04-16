@@ -13,7 +13,7 @@ export interface AnimationKeys {
     run: string,
     walk: string,
     startStandJump: string,
-    runJump: string,
+    startRunJump: string,
     fallIdle: string,
     fallLand: string
 }
@@ -28,7 +28,7 @@ class AnimationState {
 export class CharacterControls {
 
     animationKeys: AnimationKeys
-        = { idle: 'Idle', walk: 'Walk', run: 'Run', startStandJump: null, runJump: null, fallIdle: null, fallLand: null };
+        = { idle: 'Idle', walk: 'Walk', run: 'Run', startStandJump: null, startRunJump: null, fallIdle: null, fallLand: null };
     // mustFinish: string[] = []
 
     model: THREE.Group

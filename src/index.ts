@@ -242,7 +242,7 @@ import('@dimforge/rapier3d').then(RAPIER => {
         {
             idle: 'idleTrack', walk: 'walkTrack', run: 'runTrack', 
             startStandJump: 'startStandJumpTrack',
-            runJump: 'runJumpTrack',
+            startRunJump: 'runJumpTrack',
             fallIdle: 'fallIdleTrack', fallLand: 'landingTrack'
         }
     );
