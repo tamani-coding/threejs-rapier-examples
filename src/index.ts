@@ -241,7 +241,8 @@ import('@dimforge/rapier3d').then(RAPIER => {
         RAPIER, world, 'models/ybot_all.glb',
         {
             idle: 'idleTrack', walk: 'walkTrack', run: 'runTrack', 
-            standJump: 'startJumpTrack', runJump: 'runJumpTrack',
+            startStandJump: 'startStandJumpTrack',
+            runJump: 'runJumpTrack',
             fallIdle: 'fallIdleTrack', fallLand: 'landingTrack'
         }
     );

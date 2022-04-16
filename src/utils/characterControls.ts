@@ -12,7 +12,7 @@ export interface AnimationKeys {
     idle: string,
     run: string,
     walk: string,
-    standJump: string,
+    startStandJump: string,
     runJump: string,
     fallIdle: string,
     fallLand: string
@@ -21,13 +21,14 @@ export interface AnimationKeys {
 class AnimationState {
 
     public currentAction: THREE.AnimationAction
+    public doJump = false
 
 }
 
 export class CharacterControls {
 
     animationKeys: AnimationKeys
-        = { idle: 'Idle', walk: 'Walk', run: 'Run', standJump: null, runJump: null, fallIdle: null, fallLand: null };
+        = { idle: 'Idle', walk: 'Walk', run: 'Run', startStandJump: null, runJump: null, fallIdle: null, fallLand: null };
     // mustFinish: string[] = []
 
     model: THREE.Group
@@ -79,10 +80,15 @@ export class CharacterControls {
             }
         })
 
-        this.followUpAction([{ 
-            first: this.animationsMap.get(this.animationKeys.fallLand), 
-            then: this.animationsMap.get(this.animationKeys.idle) 
-        }]);
+        this.followUpAction([
+            {
+                first: this.animationsMap.get(this.animationKeys.fallLand),
+                then: this.animationsMap.get(this.animationKeys.idle)
+            }, {
+                first: this.animationsMap.get(this.animationKeys.startStandJump),
+                then: this.animationsMap.get(this.animationKeys.fallIdle)
+            },
+        ]);
 
         this.ray = ray
         this.rigidBody = rigidBody
@@ -97,7 +103,7 @@ export class CharacterControls {
     }
 
     public jump() {
-        if (this.isGrounded) {
+        if (this.isGrounded && !this.animationState.doJump) {
             this.startJumping = true;
         }
     }
@@ -106,7 +112,10 @@ export class CharacterControls {
         const directionPressed = DIRECTIONS.some(key => keysPressed[key] == true)
 
         var play = '';
-        if (this.playLand) {
+        if (this.startJumping && !this.animationState.doJump) {
+            play = this.animationKeys.startStandJump
+            this.startJumping = false
+        } else if (this.playLand) {
             this.playLand = false
             play = this.animationKeys.fallLand
         } else if (!this.isGrounded) {
@@ -119,12 +128,14 @@ export class CharacterControls {
             play = this.animationKeys.idle
         }
 
+        const currentClipName = this.animationState.currentAction.getClip().name
+        const startingJump = currentClipName === this.animationKeys.startStandJump
+
         const isWalking = directionPressed && !this.toggleRun
         const isRunning = directionPressed && this.toggleRun
-        const isMoving = isWalking || isRunning
+        const isMoving = !startingJump && (isWalking || isRunning)
 
-        const currentClipName = this.animationState.currentAction.getClip().name
-        if (currentClipName != play && ( (currentClipName !== this.animationKeys.fallLand) || isMoving )) {
+        if (currentClipName != play && !startingJump && ( currentClipName !== this.animationKeys.fallLand  || isMoving )) {
             const toPlay = this.animationsMap.get(play)
             const current = this.animationsMap.get(currentClipName)
             this.playAnimation(current, toPlay, this.animationState, this.fadeDuration);
@@ -173,7 +184,7 @@ export class CharacterControls {
             this.model.position.z = translation.z
             this.updateCameraTarget(cameraPositionOffset)
 
-            if (this.startJumping && this.isGrounded) {
+            if (this.animationState.doJump && this.isGrounded) {
                 this.isGrounded = false;
                 this.storedJumpVelocity = 8.0;
             }
@@ -182,7 +193,7 @@ export class CharacterControls {
             this.walkDirection.y += this.storedJumpVelocity * delta + this.lerp(this.storedFall, -9.81 * delta, 0.10)
             this.storedFall = this.walkDirection.y
 
-            if (!this.startJumping) {
+            if (!this.animationState.doJump) {
                 this.ray.origin.x = translation.x
                 this.ray.origin.y = translation.y
                 this.ray.origin.z = translation.z
@@ -207,7 +218,7 @@ export class CharacterControls {
                 }
             }
 
-            this.startJumping = false;
+            this.animationState.doJump = false;
 
             this.walkDirection.x = this.walkDirection.x * velocity * delta
             this.walkDirection.z = this.walkDirection.z * velocity * delta
@@ -272,15 +283,19 @@ export class CharacterControls {
         const playNext = this.playAnimation
         const animationState = this.animationState
         const fadeDuration = this.fadeDuration
+        const animationKeys = this.animationKeys
         this.mixer.addEventListener('finished', function (e: THREE.Event) {
-            const clipName = (e.action as THREE.AnimationAction).getClip().name;
+            const currentClipName = (e.action as THREE.AnimationAction).getClip().name;
 
             const index = chainedActions.findIndex(chained => {
-                return chained.first.getClip().name === clipName
+                return chained.first.getClip().name === currentClipName
             })
 
             if (index >= 0) {
                 const toPlay = chainedActions[index].then
+                if (currentClipName === animationKeys.startStandJump) {
+                    animationState.doJump = true
+                }
                 playNext((e.action as THREE.AnimationAction), toPlay, animationState, fadeDuration)
             }
         });
