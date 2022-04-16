@@ -4,6 +4,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { A, D, DIRECTIONS, S, W } from './keydisplay'
 
 export const CONTROLLER_BODY_RADIUS = 0.28;
+const TIME_IN_AIR_THRESHOLD = 0.3
+const RESPAWN_Y_THRESHOLD = -15
 
 export interface AnimationKeys {
     idle: string, 
@@ -31,6 +33,7 @@ export class CharacterControls {
     currentAction: string
     startJumping = false;
     isGrounded = false;
+    timeInAir = 0;
     
     // temporary data
     walkDirection = new THREE.Vector3()
@@ -137,7 +140,7 @@ export class CharacterControls {
         }
 
         const translation = this.rigidBody.translation();
-        if (translation.y < -1) {
+        if (translation.y < RESPAWN_Y_THRESHOLD) {
             // don't fall below ground
             this.rigidBody.setNextKinematicTranslation( { 
                 x: 0, 
@@ -173,6 +176,12 @@ export class CharacterControls {
                         this.storedFall = 0
                         this.walkDirection.y = this.lerp(0, Math.abs(diff), 0.5)
                         this.isGrounded = true;
+                        this.timeInAir = 0;
+                    } else {
+                        this.timeInAir += delta
+                        if (this.timeInAir >= TIME_IN_AIR_THRESHOLD) {
+                            this.isGrounded = false
+                        }
                     }
                 }
             }
