@@ -21,8 +21,15 @@ export interface AnimationKeys {
 class AnimationState {
 
     public currentAction: THREE.AnimationAction
+    toggleRun: boolean = true
     public doJump = false
-
+    public isMoving = false
+    startStandJumping = false;
+    startRunJumping = false;
+    isGrounded = false;
+    timeInAir = 0;
+    playLand = false;
+    storedFall = 0
 }
 
 export class CharacterControls {
@@ -38,24 +45,18 @@ export class CharacterControls {
     camera: THREE.Camera
 
     // state
-    toggleRun: boolean = true
     animationState = new AnimationState()
-    startJumping = false;
-    isGrounded = false;
-    timeInAir = 0;
-    playLand = false;
 
     // temporary data
     walkDirection = new THREE.Vector3()
     rotateAngle = new THREE.Vector3(0, 1, 0)
     rotateQuarternion: THREE.Quaternion = new THREE.Quaternion()
     cameraTarget = new THREE.Vector3()
-    storedFall = 0
 
     // constants
     fadeDuration: number = 0.2
-    runVelocity = 5
-    walkVelocity = 2
+    runVelocity = 6
+    walkVelocity = 3
     storedJumpVelocity = 0;
 
     ray: Ray
@@ -87,7 +88,10 @@ export class CharacterControls {
             }, {
                 first: this.animationsMap.get(this.animationKeys.startStandJump),
                 then: this.animationsMap.get(this.animationKeys.fallIdle)
-            },
+            }, {
+                first: this.animationsMap.get(this.animationKeys.startRunJump),
+                then: this.animationsMap.get(this.animationKeys.fallIdle)
+            }
         ]);
 
         this.ray = ray
@@ -99,12 +103,16 @@ export class CharacterControls {
     }
 
     public switchRunToggle() {
-        this.toggleRun = !this.toggleRun
+        this.animationState.toggleRun = !this.animationState.toggleRun
     }
 
     public jump() {
-        if (this.isGrounded && !this.animationState.doJump) {
-            this.startJumping = true;
+        if (this.animationState.isGrounded && !this.animationState.doJump) {
+            if (this.animationState.isMoving) {
+                this.animationState.startRunJumping = true
+            } else {
+                this.animationState.startStandJumping = true
+            }
         }
     }
 
@@ -112,15 +120,18 @@ export class CharacterControls {
         const directionPressed = DIRECTIONS.some(key => keysPressed[key] == true)
 
         var play = '';
-        if (this.startJumping && !this.animationState.doJump) {
+        if (this.animationState.startRunJumping  && !this.animationState.doJump) {
+            play = this.animationKeys.startRunJump
+            this.animationState.startRunJumping = false
+        } else if (this.animationState.startStandJumping && !this.animationState.doJump) {
             play = this.animationKeys.startStandJump
-            this.startJumping = false
-        } else if (this.playLand) {
-            this.playLand = false
+            this.animationState.startStandJumping = false
+        } else if (this.animationState.playLand) {
+            this.animationState.playLand = false
             play = this.animationKeys.fallLand
-        } else if (!this.isGrounded) {
+        } else if (!this.animationState.isGrounded) {
             play = this.animationKeys.fallIdle
-        } else if (directionPressed && this.toggleRun) {
+        } else if (directionPressed && this.animationState.toggleRun) {
             play = this.animationKeys.run
         } else if (directionPressed) {
             play = this.animationKeys.walk
@@ -129,13 +140,15 @@ export class CharacterControls {
         }
 
         const currentClipName = this.animationState.currentAction.getClip().name
-        const startingJump = currentClipName === this.animationKeys.startStandJump
+        const startingStandJump = currentClipName === this.animationKeys.startStandJump
+        const startingRunJump = currentClipName === this.animationKeys.startRunJump
 
-        const isWalking = directionPressed && !this.toggleRun
-        const isRunning = directionPressed && this.toggleRun
-        const isMoving = !startingJump && (isWalking || isRunning)
+        const isWalking = directionPressed && !this.animationState.toggleRun
+        const isRunning = directionPressed && this.animationState.toggleRun
+        this.animationState.isMoving = !startingStandJump && (isWalking || isRunning)
 
-        if (currentClipName != play && !startingJump && ( currentClipName !== this.animationKeys.fallLand  || isMoving )) {
+        if (currentClipName != play && !startingStandJump && !startingRunJump 
+                && ( currentClipName !== this.animationKeys.fallLand  || this.animationState.isMoving )) {
             const toPlay = this.animationsMap.get(play)
             const current = this.animationsMap.get(currentClipName)
             this.playAnimation(current, toPlay, this.animationState, this.fadeDuration);
@@ -146,7 +159,7 @@ export class CharacterControls {
         this.walkDirection.x = this.walkDirection.y = this.walkDirection.z = 0
 
         let velocity = 0
-        if (isMoving) {
+        if (this.animationState.isMoving) {
             // calculate towards camera direction
             var angleYCameraDirection = Math.atan2(
                 (this.camera.position.x - this.model.position.x),
@@ -184,14 +197,14 @@ export class CharacterControls {
             this.model.position.z = translation.z
             this.updateCameraTarget(cameraPositionOffset)
 
-            if (this.animationState.doJump && this.isGrounded) {
-                this.isGrounded = false;
+            if (this.animationState.doJump && this.animationState.isGrounded) {
+                this.animationState.isGrounded = false;
                 this.storedJumpVelocity = 8.0;
             }
             this.storedJumpVelocity = this.lerp(this.storedJumpVelocity, 0, 0.12)
 
-            this.walkDirection.y += this.storedJumpVelocity * delta + this.lerp(this.storedFall, -9.81 * delta, 0.10)
-            this.storedFall = this.walkDirection.y
+            this.walkDirection.y += this.storedJumpVelocity * delta + this.lerp(this.animationState.storedFall, -9.81 * delta, 0.10)
+            this.animationState.storedFall = this.walkDirection.y
 
             if (!this.animationState.doJump) {
                 this.ray.origin.x = translation.x
@@ -203,16 +216,16 @@ export class CharacterControls {
                     let diff = translation.y - (point.y + CONTROLLER_BODY_RADIUS);
                     if (diff < 0.0) {
                         this.walkDirection.y = this.lerp(0, Math.abs(diff), 0.5)
-                        if (!this.isGrounded) {
-                            this.playLand = true
+                        if (!this.animationState.isGrounded) {
+                            this.animationState.playLand = true
                         }
-                        this.isGrounded = true;
-                        this.storedFall = 0
-                        this.timeInAir = 0;
+                        this.animationState.isGrounded = true;
+                        this.animationState.storedFall = 0
+                        this.animationState.timeInAir = 0;
                     } else {
-                        this.timeInAir += delta
-                        if (this.timeInAir >= TIME_IN_AIR_THRESHOLD) {
-                            this.isGrounded = false
+                        this.animationState.timeInAir += delta
+                        if (this.animationState.timeInAir >= TIME_IN_AIR_THRESHOLD) {
+                            this.animationState.isGrounded = false
                         }
                     }
                 }
@@ -293,7 +306,7 @@ export class CharacterControls {
 
             if (index >= 0) {
                 const toPlay = chainedActions[index].then
-                if (currentClipName === animationKeys.startStandJump) {
+                if (currentClipName === animationKeys.startStandJump || currentClipName === animationKeys.startRunJump ) {
                     animationState.doJump = true
                 }
                 playNext((e.action as THREE.AnimationAction), toPlay, animationState, fadeDuration)
