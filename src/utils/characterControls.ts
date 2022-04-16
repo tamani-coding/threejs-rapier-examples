@@ -2,11 +2,12 @@ import { Ray, RigidBody, World } from '@dimforge/rapier3d';
 import * as THREE from 'three'
 import { AnimationAction } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { A, D, DIRECTIONS, S, W } from './keydisplay'
+import { A, D, DIRECTIONS, S, W, SPACE } from './keydisplay'
 
 export const CONTROLLER_BODY_RADIUS = 0.28;
 const TIME_IN_AIR_THRESHOLD = 0.3
 const RESPAWN_Y_THRESHOLD = -15
+const JUMP_VELOCITY = 8.0
 
 export interface AnimationKeys {
     idle: string,
@@ -199,9 +200,13 @@ export class CharacterControls {
 
             if (this.animationState.doJump && this.animationState.isGrounded) {
                 this.animationState.isGrounded = false;
-                this.storedJumpVelocity = 8.0;
+                this.storedJumpVelocity = JUMP_VELOCITY;
             }
-            this.storedJumpVelocity = this.lerp(this.storedJumpVelocity, 0, 0.12)
+            let jumpDecay = 0.25
+            if (keysPressed[SPACE]) {
+                jumpDecay = 0.12
+            }
+            this.storedJumpVelocity = this.lerp(this.storedJumpVelocity, 0, jumpDecay)
 
             this.walkDirection.y += this.storedJumpVelocity * delta + this.lerp(this.animationState.storedFall, -9.81 * delta, 0.10)
             this.animationState.storedFall = this.walkDirection.y

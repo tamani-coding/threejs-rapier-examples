@@ -206,8 +206,8 @@ import('@dimforge/rapier3d').then(RAPIER => {
     generateTerrain(nsubdivs, scale);
 
     const staticB = body(scene, world, 'static', 'cube',
-        { hx: 10, hy: 0.8, hz: 10 }, { x: scale.x / 2, y: 2.5, z: 0 },
-        { x: 0, y: 0, z:  0.3 }, 'pink');
+        { hx: 10, hy: 0.8, hz: 10 }, { x: scale.x / 2 + 10 + 2, y: 3, z: 0 },
+        null, 'pink');
     bodys.push(staticB);
 
     const cubeBody = body(scene, world, 'dynamic', 'cube',
