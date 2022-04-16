@@ -5,7 +5,20 @@ import { A, D, DIRECTIONS, S, W } from './keydisplay'
 
 export const CONTROLLER_BODY_RADIUS = 0.28;
 
+export interface AnimationKeys {
+    idle: string, 
+    run: string, 
+    walk: string, 
+    standJump: string, 
+    runJump: string, 
+    fallIdle: string, 
+    fallLand: string
+}
+
 export class CharacterControls {
+
+    public animationKeys : AnimationKeys
+        = { idle: 'Idle', walk: 'Walk', run: 'Run', standJump: null, runJump: null, fallIdle: null, fallLand: null };
 
     model: THREE.Group
     mixer: THREE.AnimationMixer
@@ -65,11 +78,11 @@ export class CharacterControls {
 
         var play = '';
         if (directionPressed && this.toggleRun) {
-            play = 'Run'
+            play = this.animationKeys.run
         } else if (directionPressed) {
-            play = 'Walk'
+            play = this.animationKeys.walk
         } else {
-            play = 'Idle'
+            play = this.animationKeys.idle
         }
 
         if (this.currentAction != play) {
@@ -87,7 +100,7 @@ export class CharacterControls {
         this.walkDirection.x = this.walkDirection.y = this.walkDirection.z = 0
 
         let velocity = 0
-        if (this.currentAction == 'Run' || this.currentAction == 'Walk') {
+        if (this.currentAction == this.animationKeys.run || this.currentAction == this.animationKeys.walk) {
             // calculate towards camera direction
             var angleYCameraDirection = Math.atan2(
                     (this.camera.position.x - this.model.position.x), 
@@ -106,7 +119,7 @@ export class CharacterControls {
             this.walkDirection.applyAxisAngle(this.rotateAngle, directionOffset)
 
             // run/walk velocity
-            velocity = this.currentAction == 'Run' ? this.runVelocity : this.walkVelocity
+            velocity = this.currentAction == this.animationKeys.run ? this.runVelocity : this.walkVelocity
         }
 
         const translation = this.rigidBody.translation();

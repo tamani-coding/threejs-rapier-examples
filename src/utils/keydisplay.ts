@@ -3,6 +3,7 @@ export const A = 'a'
 export const S = 's'
 export const D = 'd'
 export const SHIFT = 'shift'
+export const SPACE = ' '
 export const DIRECTIONS = [W, A, S, D]
 
 export class KeyDisplay {
@@ -15,19 +16,21 @@ export class KeyDisplay {
         const s: HTMLDivElement = document.createElement("div")
         const d: HTMLDivElement = document.createElement("div")
         const shift: HTMLDivElement = document.createElement("div")
+        const space: HTMLDivElement = document.createElement("div")
 
         this.map.set(W, w)
         this.map.set(A, a)
         this.map.set(S, s)
         this.map.set(D, d)
-        this.map.set(SHIFT, shift)
+        this.map.set(SHIFT, shift) 
+        this.map.set(SPACE, space)
 
         this.map.forEach( (v, k) => {
             v.style.color = 'blue'
             v.style.fontSize = '50px'
             v.style.fontWeight = '800'
             v.style.position = 'absolute'
-            v.textContent = k
+            v.textContent = k === ' ' ? 'space' : k
         })
 
         this.updatePosition()
@@ -43,12 +46,14 @@ export class KeyDisplay {
         this.map.get(S).style.top = `${window.innerHeight - 100}px`
         this.map.get(D).style.top = `${window.innerHeight - 100}px`
         this.map.get(SHIFT).style.top = `${window.innerHeight - 100}px`
+        this.map.get(SPACE).style.top = `${window.innerHeight - 100}px`
 
         this.map.get(W).style.left = `${300}px`
         this.map.get(A).style.left = `${200}px`
         this.map.get(S).style.left = `${300}px`
         this.map.get(D).style.left = `${400}px`
         this.map.get(SHIFT).style.left = `${50}px`
+        this.map.get(SPACE).style.left = `${500}px`
     }
 
     public down (key: string) {

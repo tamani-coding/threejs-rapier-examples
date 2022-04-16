@@ -1,10 +1,11 @@
-import { CharacterControls, CONTROLLER_BODY_RADIUS } from './utils/characterControls';
+import { CharacterControls, CONTROLLER_BODY_RADIUS, AnimationKeys } from './utils/characterControls';
 import { KeyDisplay } from './utils/keydisplay';
 import { Ray, RigidBody, World } from '@dimforge/rapier3d';
 import * as THREE from 'three';
 import { AmbientLight, BoxBufferGeometry, MeshPhongMaterial } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
 // SCENE
 const scene = new THREE.Scene();
@@ -28,8 +29,8 @@ orbitControls.enableDamping = true
 orbitControls.enablePan = true
 orbitControls.minDistance = 5
 orbitControls.maxDistance = 20
-orbitControls.maxPolarAngle = Math.PI / 2 - 0.05 // prevent camera below ground
-orbitControls.minPolarAngle = Math.PI / 4        // prevent top down view
+// orbitControls.maxPolarAngle = Math.PI / 2 - 0.05 // prevent camera below ground
+// orbitControls.minPolarAngle = Math.PI / 4        // prevent top down view
 orbitControls.update();
 
 const dLight = new THREE.DirectionalLight('white', 0.6);
@@ -235,35 +236,15 @@ import('@dimforge/rapier3d').then(RAPIER => {
     bodys.push(coneBody);
 
     // character controller
-    new GLTFLoader().load('models/Soldier.glb', function (gltf) {
-        const model = gltf.scene;
-        model.traverse(function (object: any) {
-            if (object.isMesh) object.castShadow = true;
-        });
-        scene.add(model);
-    
-        const gltfAnimations: THREE.AnimationClip[] = gltf.animations;
-        const mixer = new THREE.AnimationMixer(model);
-        const animationsMap: Map<string, THREE.AnimationAction> = new Map()
-        gltfAnimations.filter(a => a.name != 'TPose').forEach((a: THREE.AnimationClip) => {
-            animationsMap.set(a.name, mixer.clipAction(a))
-        })
-    
-
-        // RIGID BODY
-        let bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(-1, 15, 1)
-        let rigidBody = world.createRigidBody(bodyDesc);
-        let dynamicCollider = RAPIER.ColliderDesc.ball(CONTROLLER_BODY_RADIUS);
-        world.createCollider(dynamicCollider, rigidBody.handle);
-
-        characterControls = new CharacterControls(model, mixer, 
-            animationsMap, orbitControls, 
-            camera,  'Idle',
-            new RAPIER.Ray( 
-                { x: 0, y: 0, z: 0 },
-                { x: 0, y: -1, z: 0} 
-            ), rigidBody)
-    });
+    // createControllableCharacter(RAPIER, world, 'models/Soldier.glb', { idle: 'Idle', walk: 'Walk', run: 'Run', standJump: null, runJump: null, fallIdle: null, fallLand: null });
+    createControllableCharacter(
+        RAPIER, world, 'models/ybot_all.glb',
+        {
+            idle: 'idleTrack', walk: 'walkTrack', run: 'runTrack', 
+            standJump: 'startJumpTrack', runJump: 'runJumpTrack',
+            fallIdle: 'fallIdleTrack', fallLand: 'landingTrack'
+        }
+    );
 
     const clock = new THREE.Clock();
     // Game loop.
@@ -301,7 +282,6 @@ import('@dimforge/rapier3d').then(RAPIER => {
     gameLoop();
 })
 
-
 const keysPressed: any = {}
 const keyDisplayQueue = new KeyDisplay();
 document.addEventListener('keydown', (event) => {
@@ -315,3 +295,39 @@ document.addEventListener('keyup', (event) => {
     keyDisplayQueue.up(event.key);
     keysPressed[event.key.toLowerCase()] = false
 }, false);
+
+
+function createControllableCharacter(RAPIER: any, world: World, path: string, animationKeys: AnimationKeys) {
+    new GLTFLoader().load(path, function (gltf) {
+        // add model to scene
+        const model = gltf.scene || gltf.scenes[0];
+        model.traverse(function (object: any) {
+            if (object.isMesh) object.castShadow = true;
+        });
+        scene.add(model);
+
+        // clip animations
+        const gltfAnimations: THREE.AnimationClip[] = gltf.animations;
+        const mixer = new THREE.AnimationMixer(model);
+        const animationsMap: Map<string, THREE.AnimationAction> = new Map()
+        gltfAnimations.filter(a => a.name != 'TPose').forEach((a: THREE.AnimationClip) => {
+            animationsMap.set(a.name, mixer.clipAction(a))
+        })
+
+        // physical body
+        let bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(-1, 15, 1)
+        let rigidBody = world.createRigidBody(bodyDesc);
+        let dynamicCollider = RAPIER.ColliderDesc.ball(CONTROLLER_BODY_RADIUS);
+        world.createCollider(dynamicCollider, rigidBody.handle);
+
+        // character controller
+        characterControls = new CharacterControls(model, mixer,
+            animationsMap, orbitControls,
+            camera, animationKeys.idle,
+            new RAPIER.Ray(
+                { x: 0, y: 0, z: 0 },
+                { x: 0, y: -1, z: 0 }
+            ), rigidBody)
+        characterControls.animationKeys = animationKeys;
+    });
+}
