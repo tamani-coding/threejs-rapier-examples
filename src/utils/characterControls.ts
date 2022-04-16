@@ -1,5 +1,6 @@
 import { Ray, RigidBody, World } from '@dimforge/rapier3d';
 import * as THREE from 'three'
+import { AnimationAction } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { A, D, DIRECTIONS, S, W } from './keydisplay'
 
@@ -8,19 +9,26 @@ const TIME_IN_AIR_THRESHOLD = 0.3
 const RESPAWN_Y_THRESHOLD = -15
 
 export interface AnimationKeys {
-    idle: string, 
-    run: string, 
-    walk: string, 
-    standJump: string, 
-    runJump: string, 
-    fallIdle: string, 
+    idle: string,
+    run: string,
+    walk: string,
+    standJump: string,
+    runJump: string,
+    fallIdle: string,
     fallLand: string
+}
+
+class AnimationState {
+
+    public currentAction: THREE.AnimationAction
+
 }
 
 export class CharacterControls {
 
-    public animationKeys : AnimationKeys
+    animationKeys: AnimationKeys
         = { idle: 'Idle', walk: 'Walk', run: 'Run', standJump: null, runJump: null, fallIdle: null, fallLand: null };
+    // mustFinish: string[] = []
 
     model: THREE.Group
     mixer: THREE.AnimationMixer
@@ -30,18 +38,19 @@ export class CharacterControls {
 
     // state
     toggleRun: boolean = true
-    currentAction: string
+    animationState = new AnimationState()
     startJumping = false;
     isGrounded = false;
     timeInAir = 0;
-    
+    playLand = false;
+
     // temporary data
     walkDirection = new THREE.Vector3()
     rotateAngle = new THREE.Vector3(0, 1, 0)
     rotateQuarternion: THREE.Quaternion = new THREE.Quaternion()
     cameraTarget = new THREE.Vector3()
     storedFall = 0
-    
+
     // constants
     fadeDuration: number = 0.2
     runVelocity = 5
@@ -54,25 +63,33 @@ export class CharacterControls {
 
     constructor(model: THREE.Group,
         mixer: THREE.AnimationMixer, animationsMap: Map<string, THREE.AnimationAction>,
+        animationKeys: AnimationKeys,
         orbitControl: OrbitControls, camera: THREE.Camera,
         currentAction: string,
         ray: Ray, rigidBody: RigidBody) {
+
+        this.animationKeys = animationKeys
         this.model = model
         this.mixer = mixer
         this.animationsMap = animationsMap
-        this.currentAction = currentAction
+        this.animationState.currentAction = this.animationsMap.get(currentAction)
         this.animationsMap.forEach((value, key) => {
             if (key == currentAction) {
                 value.play()
             }
         })
-        
+
+        this.followUpAction([{ 
+            first: this.animationsMap.get(this.animationKeys.fallLand), 
+            then: this.animationsMap.get(this.animationKeys.idle) 
+        }]);
+
         this.ray = ray
         this.rigidBody = rigidBody
 
         this.orbitControl = orbitControl
         this.camera = camera
-        this.updateCameraTarget(new THREE.Vector3(0,1,5))
+        this.updateCameraTarget(new THREE.Vector3(0, 1, 5))
     }
 
     public switchRunToggle() {
@@ -89,7 +106,10 @@ export class CharacterControls {
         const directionPressed = DIRECTIONS.some(key => keysPressed[key] == true)
 
         var play = '';
-        if (!this.isGrounded) {
+        if (this.playLand) {
+            this.playLand = false
+            play = this.animationKeys.fallLand
+        } else if (!this.isGrounded) {
             play = this.animationKeys.fallIdle
         } else if (directionPressed && this.toggleRun) {
             play = this.animationKeys.run
@@ -101,15 +121,13 @@ export class CharacterControls {
 
         const isWalking = directionPressed && !this.toggleRun
         const isRunning = directionPressed && this.toggleRun
+        const isMoving = isWalking || isRunning
 
-        if (this.currentAction != play) {
+        const currentClipName = this.animationState.currentAction.getClip().name
+        if (currentClipName != play && ( (currentClipName !== this.animationKeys.fallLand) || isMoving )) {
             const toPlay = this.animationsMap.get(play)
-            const current = this.animationsMap.get(this.currentAction)
-
-            current.fadeOut(this.fadeDuration)
-            toPlay.reset().fadeIn(this.fadeDuration).play();
-
-            this.currentAction = play
+            const current = this.animationsMap.get(currentClipName)
+            this.playAnimation(current, toPlay, this.animationState, this.fadeDuration);
         }
 
         this.mixer.update(delta)
@@ -117,11 +135,11 @@ export class CharacterControls {
         this.walkDirection.x = this.walkDirection.y = this.walkDirection.z = 0
 
         let velocity = 0
-        if (isWalking || isRunning) {
+        if (isMoving) {
             // calculate towards camera direction
             var angleYCameraDirection = Math.atan2(
-                    (this.camera.position.x - this.model.position.x), 
-                    (this.camera.position.z - this.model.position.z))
+                (this.camera.position.x - this.model.position.x),
+                (this.camera.position.z - this.model.position.z))
             // diagonal movement angle offset
             var directionOffset = this.directionOffset(keysPressed)
 
@@ -142,10 +160,10 @@ export class CharacterControls {
         const translation = this.rigidBody.translation();
         if (translation.y < RESPAWN_Y_THRESHOLD) {
             // don't fall below ground
-            this.rigidBody.setNextKinematicTranslation( { 
-                x: 0, 
-                y: 10, 
-                z: 0 
+            this.rigidBody.setNextKinematicTranslation({
+                x: 0,
+                y: 10,
+                z: 0
             });
         } else {
             const cameraPositionOffset = this.camera.position.sub(this.model.position);
@@ -154,12 +172,12 @@ export class CharacterControls {
             this.model.position.y = translation.y
             this.model.position.z = translation.z
             this.updateCameraTarget(cameraPositionOffset)
-    
+
             if (this.startJumping && this.isGrounded) {
                 this.isGrounded = false;
                 this.storedJumpVelocity = 8.0;
-            } 
-            this.storedJumpVelocity = this.lerp(this.storedJumpVelocity, 0 , 0.12)
+            }
+            this.storedJumpVelocity = this.lerp(this.storedJumpVelocity, 0, 0.12)
 
             this.walkDirection.y += this.storedJumpVelocity * delta + this.lerp(this.storedFall, -9.81 * delta, 0.10)
             this.storedFall = this.walkDirection.y
@@ -173,9 +191,12 @@ export class CharacterControls {
                     const point = this.ray.pointAt(hit.toi);
                     let diff = translation.y - (point.y + CONTROLLER_BODY_RADIUS);
                     if (diff < 0.0) {
-                        this.storedFall = 0
                         this.walkDirection.y = this.lerp(0, Math.abs(diff), 0.5)
+                        if (!this.isGrounded) {
+                            this.playLand = true
+                        }
                         this.isGrounded = true;
+                        this.storedFall = 0
                         this.timeInAir = 0;
                     } else {
                         this.timeInAir += delta
@@ -187,14 +208,14 @@ export class CharacterControls {
             }
 
             this.startJumping = false;
-    
+
             this.walkDirection.x = this.walkDirection.x * velocity * delta
             this.walkDirection.z = this.walkDirection.z * velocity * delta
 
-            this.rigidBody.setNextKinematicTranslation( { 
-                x: translation.x + this.walkDirection.x, 
-                y: translation.y + this.walkDirection.y, 
-                z: translation.z + this.walkDirection.z 
+            this.rigidBody.setNextKinematicTranslation({
+                x: translation.x + this.walkDirection.x,
+                y: translation.y + this.walkDirection.y,
+                z: translation.z + this.walkDirection.z
             });
         }
     }
@@ -237,6 +258,41 @@ export class CharacterControls {
         }
 
         return directionOffset
+    }
+
+    private followUpAction(chainedActions: { first: THREE.AnimationAction, then: AnimationAction }[]) {
+
+        chainedActions.forEach(e => {
+            e.first.clampWhenFinished = true
+            e.first.setLoop(THREE.LoopOnce, 1)
+            // this.mustFinish.push(e.first.getClip().name)
+        });
+
+
+        const playNext = this.playAnimation
+        const animationState = this.animationState
+        const fadeDuration = this.fadeDuration
+        this.mixer.addEventListener('finished', function (e: THREE.Event) {
+            const clipName = (e.action as THREE.AnimationAction).getClip().name;
+
+            const index = chainedActions.findIndex(chained => {
+                return chained.first.getClip().name === clipName
+            })
+
+            if (index >= 0) {
+                const toPlay = chainedActions[index].then
+                playNext((e.action as THREE.AnimationAction), toPlay, animationState, fadeDuration)
+            }
+        });
+    }
+
+    private playAnimation(previous: THREE.AnimationAction, 
+        toPlay: THREE.AnimationAction, 
+        animationState: AnimationState, 
+        fadeDuration: number) {
+        previous.fadeOut(fadeDuration)
+        toPlay.reset().fadeIn(fadeDuration).play();
+        animationState.currentAction = toPlay;
     }
 
 }

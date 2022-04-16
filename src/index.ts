@@ -327,12 +327,11 @@ function createControllableCharacter(RAPIER: any, world: World, path: string, an
 
         // character controller
         characterControls = new CharacterControls(model, mixer,
-            animationsMap, orbitControls,
+            animationsMap, animationKeys, orbitControls,
             camera, animationKeys.idle,
             new RAPIER.Ray(
                 { x: 0, y: 0, z: 0 },
                 { x: 0, y: -1, z: 0 }
             ), rigidBody)
-        characterControls.animationKeys = animationKeys;
     });
 }
